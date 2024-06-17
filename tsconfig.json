@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "incremental": true,
+    "target": "es2017",
+    "module": "esnext",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "noImplicitAny": false,
+    "lib": ["es2017", "DOM"],
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "esModuleInterop": false,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "preserveConstEnums": true,
+    "strictNullChecks": false,
+    "typeRoots": [
+      "./types/",
+      "./node_modules/@types/",
+    ],
+    "declarationDir": "./dist/types",
+  }
+}

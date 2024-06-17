@@ -1,0 +1,1 @@
+{"version":3,"file":"aria-live-interfaces.d.ts","sourceRoot":"","sources":["../../../src/interfaces/aria-live-interfaces.ts"],"names":[],"mappings":"AACA,OAAO,EAAC,SAAS,EAAC,MAAM,0BAA0B,CAAC;AACnD,OAAO,EAAC,YAAY,EAAE,UAAU,EAAC,MAAM,mBAAmB,CAAC;AAE3D,MAAM,WAAW,SAAU,SAAQ,YAAY;IAC3C,IAAI,EAAC,SAAS,CAAC;CAClB;AACD,MAAM,WAAW,cAAe,SAAQ,UAAU;IAC9C,IAAI,EAAC,SAAS,CAAC;CAClB"}

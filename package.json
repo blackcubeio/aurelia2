@@ -1,0 +1,26 @@
+{
+  "name": "@blackcube/aurelia2-plugins",
+  "version": "1.0.0",
+  "description": "Blackcube Aurelia 2 plugins monorepo",
+  "repository": "https://github.com/blackcubeio/blackcube-aurelia2",
+  "author": "Gaultier Philippe <pgaultier@gmail.com>",
+  "license": "BSD-3-Clause",
+  "type": "module",
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "deploy": "npm run deploy --workspaces",
+    "clean": "npm run clean --workspaces"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "devDependencies": {
+    "@aurelia/fetch-client": "^2.0.0-beta.10",
+    "@aurelia/validation": "^2.0.0-beta.10",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "aurelia": "^2.0.0-beta.10",
+    "rimraf": "^5.0.7",
+    "rollup": "^4.18.0",
+    "tslib": "^2.6.3"
+  }
+}

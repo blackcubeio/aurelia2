@@ -1,0 +1,1 @@
+{"version":3,"file":"html-tabindex-interfaces.d.ts","sourceRoot":"","sources":["../../../src/interfaces/html-tabindex-interfaces.ts"],"names":[],"mappings":"AACA,OAAO,EAAC,YAAY,EAAE,UAAU,EAAC,MAAM,mBAAmB,CAAC;AAE3D,MAAM,WAAW,aAAc,SAAQ,YAAY;IAC/C,KAAK,EAAE,MAAM,CAAC;CACjB;AACD,MAAM,WAAW,kBAAmB,SAAQ,UAAU;IAClD,KAAK,EAAE,MAAM,CAAC;CACjB"}
