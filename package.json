@@ -15,10 +15,10 @@
     "packages/*"
   ],
   "devDependencies": {
-    "@aurelia/fetch-client": "^2.0.0-beta.10",
-    "@aurelia/validation": "^2.0.0-beta.10",
+    "@aurelia/fetch-client": "^2.0.0-beta.15",
+    "@aurelia/validation": "^2.0.0-beta.15",
     "@rollup/plugin-typescript": "^11.1.6",
-    "aurelia": "^2.0.0-beta.10",
+    "aurelia": "^2.0.0-beta.15",
     "rimraf": "^5.0.7",
     "rollup": "^4.18.0",
     "tslib": "^2.6.3"

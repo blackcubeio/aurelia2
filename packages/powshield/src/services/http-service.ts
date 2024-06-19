@@ -1,5 +1,5 @@
 import {HttpClientConfiguration, IHttpClient} from '@aurelia/fetch-client';
-import {DI, IEventAggregator} from 'aurelia';
+import {DI, IEventAggregator, resolve} from 'aurelia';
 import {IHttpResponse} from '../interfaces/http';
 
 export const IHttpService =
@@ -11,8 +11,8 @@ export class HttpService {
 
     private apiBaseUrl: string = '';
     public constructor(
-        @IHttpClient private readonly httpClient: IHttpClient,
-        @IEventAggregator private readonly ea: IEventAggregator
+        private readonly httpClient: IHttpClient = resolve(IHttpClient),
+        private readonly ea: IEventAggregator = resolve(IEventAggregator),
     )
     {
         if ((window as any).apiBaseUrl) {

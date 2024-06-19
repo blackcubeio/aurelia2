@@ -1,6 +1,6 @@
 {
   "name": "@blackcube/aurelia2-recaptcha",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Blackcube Aurelia 2 Google Recaptcha",
   "repository": "https://github.com/blackcubeio/blackcube-aurelia2",
   "author": "Gaultier Philippe <pgaultier@gmail.com>",
@@ -15,7 +15,7 @@
     "clean": "rimraf dist && rimraf .rollup.cache"
   },
   "dependencies": {
-    "aurelia": "^2.0.0-beta.10"
+    "aurelia": "^2.0.0-beta.15"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^11.1.6",

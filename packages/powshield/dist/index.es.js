@@ -1,4 +1,4 @@
-import { DI, IEventAggregator, ILogger, bindable, customAttribute, INode, IPlatform } from 'aurelia';
+import { DI, resolve, IEventAggregator, ILogger, customAttribute, bindable, INode, IPlatform } from 'aurelia';
 import { IHttpClient } from '@aurelia/fetch-client';
 
 const IPowshieldConfiguration = DI.createInterface('IPowshieldConfiguration', x => x.singleton(PowshieldConfigure));
@@ -36,46 +36,9 @@ class PowshieldConfigure {
     }
 }
 
-/******************************************************************************
-Copyright (c) Microsoft Corporation.
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-PERFORMANCE OF THIS SOFTWARE.
-***************************************************************************** */
-/* global Reflect, Promise, SuppressedError, Symbol */
-
-
-function __decorate(decorators, target, key, desc) {
-    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
-    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
-    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
-    return c > 3 && r && Object.defineProperty(target, key, r), r;
-}
-
-function __param(paramIndex, decorator) {
-    return function (target, key) { decorator(target, key, paramIndex); }
-}
-
-function __metadata(metadataKey, metadataValue) {
-    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(metadataKey, metadataValue);
-}
-
-typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
-    var e = new Error(message);
-    return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
-};
-
 const IHttpService = DI.createInterface('IHttpService', (x) => x.singleton(HttpService));
-let HttpService = class HttpService {
-    constructor(httpClient, ea) {
+class HttpService {
+    constructor(httpClient = resolve(IHttpClient), ea = resolve(IEventAggregator)) {
         this.httpClient = httpClient;
         this.ea = ea;
         this.apiBaseUrl = '';
@@ -155,16 +118,11 @@ let HttpService = class HttpService {
             }
         });
     }
-};
-HttpService = __decorate([
-    __param(0, IHttpClient),
-    __param(1, IEventAggregator),
-    __metadata("design:paramtypes", [Object, Object])
-], HttpService);
+}
 
 const IPowshieldService = DI.createInterface('IPowshieldService', (x) => x.singleton(PowshieldService));
-let PowshieldService = class PowshieldService {
-    constructor(logger, httpService, options) {
+class PowshieldService {
+    constructor(logger = resolve(ILogger), httpService = resolve(IHttpService), options = resolve(IPowshieldConfiguration)) {
         this.logger = logger;
         this.httpService = httpService;
         this.options = options;
@@ -219,79 +177,140 @@ let PowshieldService = class PowshieldService {
     async hashHex(algorithm, data) {
         return this.ab2hex(await this.hash(algorithm, data));
     }
-};
-PowshieldService = __decorate([
-    __param(0, ILogger),
-    __param(1, IHttpService),
-    __param(2, IPowshieldConfiguration),
-    __metadata("design:paramtypes", [Object, Object, Object])
-], PowshieldService);
+}
 
-let Powshield = class Powshield {
-    constructor(element, logger, options, powshieldService, platform) {
-        this.element = element;
-        this.logger = logger;
-        this.options = options;
-        this.powshieldService = powshieldService;
-        this.platform = platform;
-        this.onSubmit = (event) => {
-            event.preventDefault();
-            this.powshieldService.getChallenge()
-                .then((challenge) => {
-                return this.powshieldService.solveChallenge(challenge);
-            })
-                .then((solution) => {
-                if (!solution) {
-                    throw new Error('Failed to solve challenge');
-                }
-                const promises = [];
-                promises.push(solution);
-                promises.push(this.powshieldService.verifySolution(solution));
-                return Promise.all(promises);
-            })
-                .then((response) => {
-                if (!response[1]) {
-                    throw new Error('Failed to verify solution');
-                }
-                const solutionBase64 = btoa(JSON.stringify(response[0]));
-                const input = this.element.querySelector(this.solutionInputSelector);
-                if (!input) {
-                    throw new Error('Failed to find solution input');
-                }
-                input.value = solutionBase64;
-                this.element.submit();
-            })
-                .catch((error) => {
-                this.logger.error(error, 'should retry');
-            });
-        };
-        this.logger = logger.scopeTo('Powshield');
-        this.logger.trace('constructor');
-    }
-    binding() {
-        this.logger.trace('binding');
-        if (!this.solutionInputSelector) {
-            this.solutionInputSelector = this.options.get('solutionInputSelector');
+/******************************************************************************
+Copyright (c) Microsoft Corporation.
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+***************************************************************************** */
+/* global Reflect, Promise, SuppressedError, Symbol */
+
+
+function __esDecorate(ctor, descriptorIn, decorators, contextIn, initializers, extraInitializers) {
+    function accept(f) { if (f !== void 0 && typeof f !== "function") throw new TypeError("Function expected"); return f; }
+    var kind = contextIn.kind, key = kind === "getter" ? "get" : kind === "setter" ? "set" : "value";
+    var target = !descriptorIn && ctor ? contextIn["static"] ? ctor : ctor.prototype : null;
+    var descriptor = descriptorIn || (target ? Object.getOwnPropertyDescriptor(target, contextIn.name) : {});
+    var _, done = false;
+    for (var i = decorators.length - 1; i >= 0; i--) {
+        var context = {};
+        for (var p in contextIn) context[p] = p === "access" ? {} : contextIn[p];
+        for (var p in contextIn.access) context.access[p] = contextIn.access[p];
+        context.addInitializer = function (f) { if (done) throw new TypeError("Cannot add initializers after decoration has completed"); extraInitializers.push(accept(f || null)); };
+        var result = (0, decorators[i])(kind === "accessor" ? { get: descriptor.get, set: descriptor.set } : descriptor[key], context);
+        if (kind === "accessor") {
+            if (result === void 0) continue;
+            if (result === null || typeof result !== "object") throw new TypeError("Object expected");
+            if (_ = accept(result.get)) descriptor.get = _;
+            if (_ = accept(result.set)) descriptor.set = _;
+            if (_ = accept(result.init)) initializers.unshift(_);
+        }
+        else if (_ = accept(result)) {
+            if (kind === "field") initializers.unshift(_);
+            else descriptor[key] = _;
         }
     }
-    attached() {
-        this.logger.trace('attached');
-        this.element.addEventListener('submit', this.onSubmit);
+    if (target) Object.defineProperty(target, contextIn.name, descriptor);
+    done = true;
+}
+function __runInitializers(thisArg, initializers, value) {
+    var useValue = arguments.length > 2;
+    for (var i = 0; i < initializers.length; i++) {
+        value = useValue ? initializers[i].call(thisArg, value) : initializers[i].call(thisArg);
     }
+    return useValue ? value : void 0;
+}
+function __setFunctionName(f, name, prefix) {
+    return Object.defineProperty(f, "name", { configurable: true, value: name });
+}
+typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
+    var e = new Error(message);
+    return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
 };
-__decorate([
-    bindable({ primary: true }),
-    __metadata("design:type", String)
-], Powshield.prototype, "solutionInputSelector", void 0);
-Powshield = __decorate([
-    customAttribute("bc-powshield"),
-    __param(0, INode),
-    __param(1, ILogger),
-    __param(2, IPowshieldConfiguration),
-    __param(3, IPowshieldService),
-    __param(4, IPlatform),
-    __metadata("design:paramtypes", [HTMLFormElement, Object, Object, Object, Object])
-], Powshield);
+
+let Powshield = (() => {
+    let _classDecorators = [customAttribute("bc-powshield")];
+    let _classDescriptor;
+    let _classExtraInitializers = [];
+    let _classThis;
+    let _solutionInputSelector_decorators;
+    let _solutionInputSelector_initializers = [];
+    let _solutionInputSelector_extraInitializers = [];
+    _classThis = class {
+        constructor(element = resolve(INode), logger = resolve(ILogger).scopeTo('Powshield'), options = resolve(IPowshieldConfiguration), powshieldService = resolve(IPowshieldService), platform = resolve(IPlatform)) {
+            this.element = element;
+            this.logger = logger;
+            this.options = options;
+            this.powshieldService = powshieldService;
+            this.platform = platform;
+            this.solutionInputSelector = __runInitializers(this, _solutionInputSelector_initializers, void 0);
+            this.challengeBase64 = __runInitializers(this, _solutionInputSelector_extraInitializers);
+            this.onSubmit = (event) => {
+                event.preventDefault();
+                this.powshieldService.getChallenge()
+                    .then((challenge) => {
+                    return this.powshieldService.solveChallenge(challenge);
+                })
+                    .then((solution) => {
+                    if (!solution) {
+                        throw new Error('Failed to solve challenge');
+                    }
+                    const promises = [];
+                    promises.push(solution);
+                    promises.push(this.powshieldService.verifySolution(solution));
+                    return Promise.all(promises);
+                })
+                    .then((response) => {
+                    if (!response[1]) {
+                        throw new Error('Failed to verify solution');
+                    }
+                    const solutionBase64 = btoa(JSON.stringify(response[0]));
+                    const input = this.element.querySelector(this.solutionInputSelector);
+                    if (!input) {
+                        throw new Error('Failed to find solution input');
+                    }
+                    input.value = solutionBase64;
+                    this.element.submit();
+                })
+                    .catch((error) => {
+                    this.logger.error(error, 'should retry');
+                });
+            };
+            this.logger.trace('constructor');
+        }
+        binding() {
+            this.logger.trace('binding');
+            if (!this.solutionInputSelector) {
+                this.solutionInputSelector = this.options.get('solutionInputSelector');
+            }
+        }
+        attached() {
+            this.logger.trace('attached');
+            this.element.addEventListener('submit', this.onSubmit);
+        }
+    };
+    __setFunctionName(_classThis, "Powshield");
+    (() => {
+        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
+        _solutionInputSelector_decorators = [bindable({ primary: true })];
+        __esDecorate(null, null, _solutionInputSelector_decorators, { kind: "field", name: "solutionInputSelector", static: false, private: false, access: { has: obj => "solutionInputSelector" in obj, get: obj => obj.solutionInputSelector, set: (obj, value) => { obj.solutionInputSelector = value; } }, metadata: _metadata }, _solutionInputSelector_initializers, _solutionInputSelector_extraInitializers);
+        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
+        _classThis = _classDescriptor.value;
+        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
+        __runInitializers(_classThis, _classExtraInitializers);
+    })();
+    return _classThis;
+})();
 
 const DefaultComponents = [
     Powshield,

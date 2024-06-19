@@ -1,6 +1,6 @@
 {
   "name": "@blackcube/aurelia2-powshield",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Blackcube Aurelia 2 Powshield",
   "repository": "https://github.com/blackcubeio/blackcube-aurelia2",
   "author": "Gaultier Philippe <pgaultier@gmail.com>",
@@ -15,8 +15,8 @@
     "clean": "rimraf dist && rimraf .rollup.cache"
   },
   "dependencies": {
-    "@aurelia/fetch-client": "^2.0.0-beta.10",
-    "aurelia": "^2.0.0-beta.10"
+    "@aurelia/fetch-client": "^2.0.0-beta.15",
+    "aurelia": "^2.0.0-beta.15"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^11.1.6",

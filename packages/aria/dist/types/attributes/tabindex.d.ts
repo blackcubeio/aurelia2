@@ -13,7 +13,7 @@ export declare class Tabindex {
     value: string;
     private disposable;
     private previousValue;
-    constructor(logger: ILogger, ea: IEventAggregator, platform: IPlatform, element: HTMLElement);
+    constructor(logger?: ILogger, ea?: IEventAggregator, platform?: IPlatform, element?: HTMLElement);
     attached(): void;
     dispose(): void;
     onTabindex: (data: IHtmlTabindex) => void;

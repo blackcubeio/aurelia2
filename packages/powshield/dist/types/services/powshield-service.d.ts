@@ -12,7 +12,7 @@ export declare class PowshieldService {
     private encoder;
     private generateChallengeUrl;
     private verifySolutionUrl;
-    constructor(logger: ILogger, httpService: IHttpService, options: IPowshieldConfiguration);
+    constructor(logger?: ILogger, httpService?: IHttpService, options?: IPowshieldConfiguration);
     getChallenge(): Promise<IPowshieldChallenge>;
     verifySolution(solution: IPowshieldSolution): Promise<boolean>;
     solveChallenge(challenge: IPowshieldChallenge): Promise<IPowshieldSolution | null>;

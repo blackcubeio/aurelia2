@@ -11,7 +11,7 @@ export declare class AriaCurrent {
     enabled: boolean;
     mode: CurrentModes;
     private disposable;
-    constructor(logger: ILogger, ea: IEventAggregator, platform: IPlatform, element: HTMLElement);
+    constructor(logger?: ILogger, ea?: IEventAggregator, platform?: IPlatform, element?: HTMLElement);
     attached(): void;
     dispose(): void;
     onAriaCurrent: (data: IAriaCurrent) => void;

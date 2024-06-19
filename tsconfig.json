@@ -1,26 +1,24 @@
 {
   "compilerOptions": {
-    "incremental": true,
-    "target": "es2017",
-    "module": "esnext",
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "noImplicitAny": false,
+    "esModuleInterop": true,
+    "importHelpers": true,
     "lib": ["es2017", "DOM"],
+    "module": "esnext",
     "moduleResolution": "node",
+    "noImplicitAny": false,
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "esModuleInterop": false,
-    "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
-    "preserveConstEnums": true,
-    "strictNullChecks": false,
-    "typeRoots": [
-      "./types/",
-      "./node_modules/@types/",
+    "target": "es2017",
+    "types": [
+      "aurelia"
     ],
     "declarationDir": "./dist/types",
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "vendor"
+  ]
 }

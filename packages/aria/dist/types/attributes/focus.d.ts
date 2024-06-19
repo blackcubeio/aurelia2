@@ -12,7 +12,7 @@ export declare class Focus {
     enabled: boolean;
     private disposable;
     private focusDelay;
-    constructor(logger: ILogger, options: IAriaConfiguration, ea: IEventAggregator, platform: IPlatform, element: HTMLElement);
+    constructor(logger?: ILogger, options?: IAriaConfiguration, ea?: IEventAggregator, platform?: IPlatform, element?: HTMLElement);
     attached(): void;
     detached(): void;
     dispose(): void;

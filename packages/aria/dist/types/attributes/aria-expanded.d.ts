@@ -11,7 +11,7 @@ export declare class AriaExpanded {
     enabled: boolean;
     mode: ExpandedModes;
     private disposable;
-    constructor(logger: ILogger, ea: IEventAggregator, platform: IPlatform, element: HTMLElement);
+    constructor(logger?: ILogger, ea?: IEventAggregator, platform?: IPlatform, element?: HTMLElement);
     attached(): void;
     dispose(): void;
     onAriaExpand: (data: IAriaExpanded) => void;

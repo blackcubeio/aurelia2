@@ -11,7 +11,7 @@ export declare class AriaSelected {
     enabled: boolean;
     mode: SelectedModes;
     private disposable;
-    constructor(logger: ILogger, ea: IEventAggregator, platform: IPlatform, element: HTMLElement);
+    constructor(logger?: ILogger, ea?: IEventAggregator, platform?: IPlatform, element?: HTMLElement);
     attached(): void;
     dispose(): void;
     onAriaSelected: (data: IAriaSelected) => void;

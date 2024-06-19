@@ -1,4 +1,4 @@
-import {bindable, customAttribute, ILogger, INode, IPlatform} from 'aurelia';
+import {bindable, customAttribute, ILogger, INode, IPlatform, resolve} from 'aurelia';
 import {IPowshieldConfiguration} from '../configure';
 import {IPowshieldService} from '../services/powshield-service';
 
@@ -7,13 +7,12 @@ export class Powshield {
     @bindable({primary: true}) public solutionInputSelector: string;
     private challengeBase64: string;
     public constructor(
-        @INode private readonly element: HTMLFormElement,
-        @ILogger private readonly logger: ILogger,
-        @IPowshieldConfiguration private readonly options: IPowshieldConfiguration,
-        @IPowshieldService private readonly powshieldService: IPowshieldService,
-        @IPlatform private readonly platform: IPlatform
+        private readonly element: HTMLFormElement = resolve(INode) as HTMLFormElement,
+        private readonly logger: ILogger = resolve(ILogger).scopeTo('Powshield'),
+        private readonly options: IPowshieldConfiguration = resolve(IPowshieldConfiguration),
+        private readonly powshieldService: IPowshieldService = resolve(IPowshieldService),
+        private readonly platform: IPlatform = resolve(IPlatform),
     ) {
-        this.logger = logger.scopeTo('Powshield');
         this.logger.trace('constructor');
     }
 

@@ -1,4 +1,4 @@
-import {DI, ILogger} from 'aurelia';
+import {DI, ILogger, resolve} from 'aurelia';
 import {Algorithm} from '../types/powshield';
 import {IPowshieldChallenge, IPowshieldSolution} from '../interfaces/powshield';
 import {IHttpService} from './http-service';
@@ -17,9 +17,9 @@ export class PowshieldService {
     private verifySolutionUrl: string;
 
     public constructor(
-        @ILogger private readonly logger: ILogger,
-        @IHttpService private readonly httpService: IHttpService,
-        @IPowshieldConfiguration private readonly options: IPowshieldConfiguration,
+        private readonly logger: ILogger = resolve(ILogger),
+        private readonly httpService: IHttpService = resolve(IHttpService),
+        private readonly options: IPowshieldConfiguration = resolve(IPowshieldConfiguration),
     ) {
         this.logger = logger.scopeTo('PowshieldService');
         this.logger.trace('constructor');

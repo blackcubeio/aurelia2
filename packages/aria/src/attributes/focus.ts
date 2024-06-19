@@ -1,4 +1,4 @@
-import {IEventAggregator, INode, IPlatform, ILogger, bindable, customAttribute, IDisposable} from "aurelia";
+import {IEventAggregator, INode, IPlatform, ILogger, bindable, customAttribute, IDisposable, resolve} from "aurelia";
 import {FocusChannels} from "../enums/html-focus-enums";
 import {IHtmlFocus, IHtmlFocusEnded} from "../interfaces/html-focus-interfaces";
 import {HtmlActions} from "../enums/html-enums";
@@ -14,11 +14,12 @@ export class Focus
     private focusDelay:number;
 
     public constructor(
-        @ILogger private readonly logger: ILogger,
-        @IAriaConfiguration private readonly options: IAriaConfiguration,
-        @IEventAggregator private readonly ea: IEventAggregator,
-        @IPlatform private readonly platform:IPlatform,
-        @INode private readonly element: HTMLElement) {
+        private readonly logger: ILogger = resolve(ILogger),
+        private readonly options: IAriaConfiguration = resolve(IAriaConfiguration),
+        private readonly ea: IEventAggregator = resolve(IEventAggregator),
+        private readonly platform:IPlatform = resolve(IPlatform),
+        private readonly element: HTMLElement = resolve(INode) as HTMLElement,
+    ) {
         this.logger = logger.scopeTo('Focus');
         this.logger.trace('constructor');
         this.focusDelay = this.options.get('focusDelay');

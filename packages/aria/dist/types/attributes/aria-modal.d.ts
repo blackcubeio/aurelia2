@@ -16,7 +16,7 @@ export declare class AriaModal {
     role: ModalRoles;
     private defaultTabindex;
     private disposable;
-    constructor(logger: ILogger, ea: IEventAggregator, platform: IPlatform, element: HTMLElement);
+    constructor(logger?: ILogger, ea?: IEventAggregator, platform?: IPlatform, element?: HTMLElement);
     attached(): void;
     dispose(): void;
     onAriaModal: (data: IAriaModal) => void;

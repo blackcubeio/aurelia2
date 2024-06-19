@@ -1,4 +1,4 @@
-import {IEventAggregator, INode, IPlatform, ILogger, bindable, customAttribute, IDisposable} from "aurelia";
+import {IEventAggregator, INode, IPlatform, ILogger, bindable, customAttribute, IDisposable, resolve} from "aurelia";
 import { ValidationResult } from "@aurelia/validation";
 import {InvalidChannels, InvalidModes} from "../enums/aria-invalid-enums";
 import {HtmlActions} from "../enums/html-enums";
@@ -21,10 +21,12 @@ export class AriaInvalid
     private disposable:IDisposable;
 
     public constructor(
-        @ILogger private readonly logger: ILogger,
-        @IEventAggregator private readonly ea: IEventAggregator,
-        @IPlatform private readonly platform:IPlatform,
-        @INode private readonly element: HTMLElement) {
+        private readonly logger: ILogger = resolve(ILogger),
+        private readonly ea: IEventAggregator = resolve(IEventAggregator),
+        private readonly platform:IPlatform = resolve(IPlatform),
+        private readonly element: HTMLElement = resolve(INode) as HTMLElement,
+        )
+{
         this.logger = logger.scopeTo('AriaInvalid');
         this.logger.trace('constructor')
     }

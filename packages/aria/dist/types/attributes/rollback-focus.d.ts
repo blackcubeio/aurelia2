@@ -6,7 +6,7 @@ export declare class RollbackFocus {
     event: string;
     private subscriptionListenRollbackFocus;
     private subscriptionChangeRollbackFocus;
-    constructor(element: INode, logger: ILogger, ea: IEventAggregator);
+    constructor(element?: INode, logger?: ILogger, ea?: IEventAggregator);
     attaching(): void;
     attached(): void;
     detached(): void;

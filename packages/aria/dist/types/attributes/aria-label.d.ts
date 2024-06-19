@@ -10,7 +10,7 @@ export declare class AriaLabel {
     enabled: boolean;
     label: string;
     private disposable;
-    constructor(logger: ILogger, ea: IEventAggregator, platform: IPlatform, element: HTMLElement);
+    constructor(logger?: ILogger, ea?: IEventAggregator, platform?: IPlatform, element?: HTMLElement);
     attached(): void;
     dispose(): void;
     onAriaLabel: (data: IAriaLabel) => void;

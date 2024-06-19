@@ -8,7 +8,7 @@ export declare class HttpService {
     private readonly httpClient;
     private readonly ea;
     private apiBaseUrl;
-    constructor(httpClient: IHttpClient, ea: IEventAggregator);
+    constructor(httpClient?: IHttpClient, ea?: IEventAggregator);
     getJson(url: string, requestInit?: RequestInit | null): Promise<IHttpResponse>;
     postJson(url: string, payload: any, requestInit?: RequestInit | null): Promise<IHttpResponse>;
     private fetch;

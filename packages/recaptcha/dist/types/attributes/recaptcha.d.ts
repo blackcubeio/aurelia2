@@ -18,7 +18,7 @@ export declare class Recaptcha {
     size: string;
     theme: string;
     event: string;
-    constructor(logger: ILogger, platform: IPlatform, element: HTMLElement, options: IRecaptchaConfiguration);
+    constructor(logger?: ILogger, platform?: IPlatform, element?: HTMLElement, options?: IRecaptchaConfiguration);
     binding(): void;
     attaching(): Promise<unknown>;
     attached(): void;

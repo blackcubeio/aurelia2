@@ -1,4 +1,4 @@
-import {bindable, customAttribute, IDisposable, IEventAggregator, ILogger, INode, IPlatform} from "aurelia";
+import {bindable, customAttribute, IDisposable, IEventAggregator, ILogger, INode, IPlatform, resolve} from "aurelia";
 import {HtmlActions} from "../enums/html-enums";
 import {IAriaConfiguration} from "../configure";
 import {TrapFocusChannels} from "../enums/html-trap-focus-enums";
@@ -23,12 +23,12 @@ export class TrapFocus
     private focusDelay:number;
 
     public constructor(
-        @IAriaConfiguration private readonly options: IAriaConfiguration,
-        @ILogger private readonly logger: ILogger,
-        @IEventAggregator private readonly ea: IEventAggregator,
-        @IPlatform private readonly platform:IPlatform,
-        @INode private readonly element: HTMLElement)
-    {
+        private readonly options: IAriaConfiguration = resolve(IAriaConfiguration),
+        private readonly logger: ILogger = resolve(ILogger),
+        private readonly ea: IEventAggregator = resolve(IEventAggregator),
+        private readonly platform:IPlatform = resolve(IPlatform),
+        private readonly element: HTMLElement = resolve(INode) as HTMLElement,
+    ) {
         this.logger = logger.scopeTo('TrapFocus');
         this.logger.trace('constructor')
         this.keysMonitored = this.options.get('keysMonitored');

@@ -11,7 +11,7 @@ export declare class AriaHidden {
     enabled: boolean;
     mode: HiddenModes;
     private disposable;
-    constructor(logger: ILogger, ea: IEventAggregator, platform: IPlatform, element: HTMLElement);
+    constructor(logger?: ILogger, ea?: IEventAggregator, platform?: IPlatform, element?: HTMLElement);
     attached(): void;
     dispose(): void;
     onAriaHidden: (data: IAriaHidden) => void;

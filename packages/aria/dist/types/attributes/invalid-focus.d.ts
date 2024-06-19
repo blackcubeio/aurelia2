@@ -12,7 +12,7 @@ export declare class InvalidFocus {
     private disposable;
     private invalidElementsQuerySelector;
     private focusDelay;
-    constructor(options: IAriaConfiguration, logger: ILogger, ea: IEventAggregator, platform: IPlatform, element: HTMLElement);
+    constructor(options?: IAriaConfiguration, logger?: ILogger, ea?: IEventAggregator, platform?: IPlatform, element?: HTMLElement);
     attached(): void;
     detached(): void;
     dispose(): void;

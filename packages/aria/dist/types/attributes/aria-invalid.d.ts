@@ -19,7 +19,7 @@ export declare class AriaInvalid {
     labelledById: string;
     private form;
     private disposable;
-    constructor(logger: ILogger, ea: IEventAggregator, platform: IPlatform, element: HTMLElement);
+    constructor(logger?: ILogger, ea?: IEventAggregator, platform?: IPlatform, element?: HTMLElement);
     static convertErrors(resuts: ValidationResult[], form?: HTMLFormElement | null): IAriaInvalid[];
     attached(): void;
     dispose(): void;

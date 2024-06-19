@@ -1,4 +1,4 @@
-import {IPlatform, bindable, BindingMode, customAttribute, ILogger, INode} from 'aurelia';
+import {IPlatform, bindable, BindingMode, customAttribute, ILogger, INode, resolve} from 'aurelia';
 import {IRecaptchaConfiguration} from '../configure';
 
 declare var grecaptcha:any;
@@ -19,10 +19,10 @@ export class Recaptcha {
     @bindable({mode:BindingMode.oneTime}) public theme: string = 'light';
     @bindable({primary:true, mode:BindingMode.oneTime}) public event: string = 'submit';
     public constructor(
-        @ILogger private readonly logger: ILogger,
-        @IPlatform private readonly platform:IPlatform,
-        @INode private readonly element: HTMLElement,
-        @IRecaptchaConfiguration private readonly options: IRecaptchaConfiguration,
+        private readonly logger: ILogger = resolve(ILogger),
+        private readonly platform:IPlatform = resolve(IPlatform),
+        private readonly element: HTMLElement = resolve(INode) as HTMLElement,
+        private readonly options: IRecaptchaConfiguration = resolve(IRecaptchaConfiguration),
     ) {
         this.logger = logger.scopeTo('Recaptcha');
         this.logger.trace('constructor');

@@ -9,7 +9,7 @@ export declare class Powshield {
     private readonly platform;
     solutionInputSelector: string;
     private challengeBase64;
-    constructor(element: HTMLFormElement, logger: ILogger, options: IPowshieldConfiguration, powshieldService: IPowshieldService, platform: IPlatform);
+    constructor(element?: HTMLFormElement, logger?: ILogger, options?: IPowshieldConfiguration, powshieldService?: IPowshieldService, platform?: IPlatform);
     binding(): void;
     attached(): void;
     private onSubmit;

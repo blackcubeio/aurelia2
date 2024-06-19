@@ -1,4 +1,4 @@
-import {IEventAggregator, INode, IPlatform, ILogger, bindable, customAttribute, IDisposable} from "aurelia";
+import {IEventAggregator, INode, IPlatform, ILogger, bindable, customAttribute, IDisposable, resolve} from "aurelia";
 import {RollbackFocusChannels} from '../enums/html-rollback-focus-enums';
 import {IHtmlRollbackFocus, IHtmlRollbackFocusEnded} from '../interfaces/html-rollback-focus-interfaces';
 
@@ -9,9 +9,9 @@ export class RollbackFocus
     private subscriptionListenRollbackFocus: IDisposable|null = null;
     private subscriptionChangeRollbackFocus: IDisposable|null = null;
     public constructor(
-        @INode private readonly element: INode,
-        @ILogger private readonly logger: ILogger,
-        @IEventAggregator private readonly ea: IEventAggregator,
+        private readonly element: INode = resolve(INode) as HTMLElement,
+        private readonly logger: ILogger = resolve(ILogger),
+        private readonly ea: IEventAggregator = resolve(IEventAggregator),
     ) {
         this.logger = logger.scopeTo('RollbackFocus');
         this.logger.trace('constructor');

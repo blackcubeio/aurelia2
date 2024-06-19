@@ -11,7 +11,7 @@ export declare class AriaLive {
     mode: LiveModes;
     enabled: boolean;
     private disposable;
-    constructor(logger: ILogger, ea: IEventAggregator, platform: IPlatform, element: HTMLElement);
+    constructor(logger?: ILogger, ea?: IEventAggregator, platform?: IPlatform, element?: HTMLElement);
     attached(): void;
     dispose(): void;
     onAriaLive: (data: IAriaLive) => void;
