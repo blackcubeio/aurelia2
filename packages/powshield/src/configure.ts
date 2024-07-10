@@ -5,6 +5,8 @@ export interface IPowshieldConfig {
     generateChallengeUrl?: string;
     verifySolutionUrl?: string;
     solutionInputSelector?: string;
+    workers?: number;
+    timeValidity?: number;
 }
 
 export interface IPowshieldConfiguration extends PowshieldConfigure {}
@@ -18,7 +20,9 @@ export class PowshieldConfigure {
         this._config = {
             generateChallengeUrl: '/powshield/generate-challenge',
             verifySolutionUrl: '/powshield/verify-solution',
-            solutionInputSelector: '#powshieldSolution'
+            solutionInputSelector: '#powshieldSolution',
+            workers: 10,
+            timeValidity: 300
         };
         console.log('PowshieldConfigure constructor');
     }
