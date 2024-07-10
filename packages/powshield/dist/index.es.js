@@ -1,4 +1,4 @@
-import { DI, resolve, IEventAggregator, ILogger, customAttribute, bindable, INode, IPlatform } from 'aurelia';
+import { DI, resolve, IEventAggregator, ILogger, IPlatform, customAttribute, bindable, watch, INode } from 'aurelia';
 import { IHttpClient } from '@aurelia/fetch-client';
 
 const IPowshieldConfiguration = DI.createInterface('IPowshieldConfiguration', x => x.singleton(PowshieldConfigure));
@@ -7,7 +7,9 @@ class PowshieldConfigure {
         this._config = {
             generateChallengeUrl: '/powshield/generate-challenge',
             verifySolutionUrl: '/powshield/verify-solution',
-            solutionInputSelector: '#powshieldSolution'
+            solutionInputSelector: '#powshieldSolution',
+            workers: 10,
+            timeValidity: 300
         };
         console.log('PowshieldConfigure constructor');
     }
@@ -120,17 +122,172 @@ class HttpService {
     }
 }
 
+class InlineWorker {
+    constructor() {
+        this.status = InlineWorkerState.INITIALIZED;
+        this.run = (job) => {
+            return new Promise((resolve, reject) => {
+                this.worker.onmessage = (ev) => {
+                    job.statistics.ended = Date.now();
+                    this.status = ev.data.status;
+                    ev.data.statistics = job.statistics;
+                    resolve(ev.data);
+                };
+                this.worker.onerror = (err) => {
+                    job.statistics.ended = Date.now();
+                    this.status = InlineWorkerState.FAILED;
+                    reject({
+                        status: InlineWorkerState.FAILED,
+                        message: err,
+                        statistics: job.statistics
+                    });
+                };
+                job.statistics.started = Date.now();
+                this.worker.postMessage({
+                    command: 'run',
+                    args: [this.convertJobToObj(job)]
+                });
+            });
+        };
+        // creates an worker that runs a job
+        this.blobURL = URL.createObjectURL(new Blob([
+            this.getWorkerScript()
+        ], {
+            type: 'application/javascript'
+        }));
+        this.worker = new Worker(this.blobURL);
+    }
+    convertJobToObj(job) {
+        return {
+            id: job.id,
+            args: job.args,
+            doFunction: job.doFunction.toString()
+        };
+    }
+    /**
+     * destroys the Taskmanager if not needed anymore.
+     */
+    destroy() {
+        this.worker.terminate();
+        URL.revokeObjectURL(this.blobURL);
+    }
+    getWorkerScript() {
+        return `var job = null;
+var base = self;
+
+onmessage = function (msg) {
+    var data = msg.data;
+    var command = data.command;
+    var args = data.args;
+
+    switch (command) {
+        case("run"):
+            base.job = args[0];
+            var func = new Function("return " + base.job.doFunction)();
+            func(base.job.args).then(function (result) {
+                base.postMessage({
+                    status: "finished",
+                    result: result
+                });
+            }).catch(function (error) {
+                base.postMessage({
+                    type: "failed",
+                    message: error
+                });
+            });
+            break;
+        default:
+            base.postMessage({
+                status: "failed",
+                message: "invalid command"
+            });
+            break;
+    }
+}`;
+    }
+}
+var InlineWorkerState;
+(function (InlineWorkerState) {
+    InlineWorkerState["INITIALIZED"] = "initialized";
+    InlineWorkerState["RUNNING"] = "running";
+    InlineWorkerState["FINISHED"] = "finished";
+    InlineWorkerState["FAILED"] = "failed";
+    InlineWorkerState["STOPPED"] = "stopped";
+})(InlineWorkerState || (InlineWorkerState = {}));
+class InlineWorkerJob {
+    get statistics() {
+        return this._statistics;
+    }
+    set statistics(value) {
+        this._statistics = value;
+    }
+    get args() {
+        return this._args;
+    }
+    get id() {
+        return this._id;
+    }
+    constructor(doFunction, args) {
+        this._args = [];
+        this._statistics = {
+            started: -1,
+            ended: -1
+        };
+        this.doFunction = (args) => {
+            return new Promise((resolve, reject) => {
+                reject('not implemented');
+            });
+        };
+        this._id = ++InlineWorkerJob.jobIDCounter;
+        this.doFunction = doFunction;
+        this._args = args;
+    }
+}
+InlineWorkerJob.jobIDCounter = 0;
+
+const solveChallenge = (challenge) => {
+    const encoder = new TextEncoder();
+    const ab2hex = (ab) => {
+        return [...new Uint8Array(ab)]
+            .map((x) => x.toString(16).padStart(2, '0'))
+            .join('');
+    };
+    const hash = async (algorithm, data) => {
+        return crypto.subtle.digest(algorithm.toUpperCase(), typeof data === 'string' ? encoder.encode(data) : new Uint8Array(data));
+    };
+    const hashHex = async (algorithm, data) => {
+        return ab2hex(await hash(algorithm, data));
+    };
+    const searchSecretNumber = async () => {
+        for (let secretNumber = challenge.start; secretNumber <= challenge.max; secretNumber += 1) {
+            const t = await hashHex(challenge.algorithm, challenge.salt + secretNumber + challenge.timestamp);
+            if (t === challenge.challenge) {
+                const solution = Object.assign(Object.assign({}, challenge), { number: secretNumber });
+                return solution;
+            }
+        }
+        return null;
+    };
+    return searchSecretNumber();
+};
+
 const IPowshieldService = DI.createInterface('IPowshieldService', (x) => x.singleton(PowshieldService));
 class PowshieldService {
-    constructor(logger = resolve(ILogger), httpService = resolve(IHttpService), options = resolve(IPowshieldConfiguration)) {
+    constructor(logger = resolve(ILogger), httpService = resolve(IHttpService), options = resolve(IPowshieldConfiguration), platform = resolve(IPlatform)) {
         this.logger = logger;
         this.httpService = httpService;
         this.options = options;
+        this.platform = platform;
         this.encoder = new TextEncoder();
+        this.workers = 1;
+        this.workersPool = new Set();
         this.logger = logger.scopeTo('PowshieldService');
         this.logger.trace('constructor');
         this.generateChallengeUrl = this.options.get('generateChallengeUrl');
         this.verifySolutionUrl = this.options.get('verifySolutionUrl');
+        if (typeof (Worker) !== "undefined") {
+            this.workers = this.options.get('workers');
+        }
     }
     getChallenge() {
         return this.httpService.getJson(this.generateChallengeUrl)
@@ -151,6 +308,77 @@ class PowshieldService {
                 throw new Error('Failed to verify solution');
             }
             return response.data;
+        });
+    }
+    solve(challenge) {
+        if (this.workers > 1) {
+            return this.solveWorkerChallenge(challenge);
+        }
+        else {
+            return solveChallenge(challenge);
+        }
+    }
+    solveWorkerChallenge(challenge) {
+        const promises = [];
+        for (let i = 0; i < this.workers; i++) {
+            const batchSize = Math.ceil((challenge.max - challenge.start) / this.workers);
+            const subChallenge = Object.assign(Object.assign({}, challenge), { start: batchSize * i, max: batchSize * (i + 1) });
+            const inlineWorker = new InlineWorker();
+            this.workersPool.add(inlineWorker);
+            const inlineWorkerJob = new InlineWorkerJob((args) => {
+                const subChallenge = args[0];
+                const solveChallenge = (challenge) => {
+                    const encoder = new TextEncoder();
+                    const ab2hex = (ab) => {
+                        return [...new Uint8Array(ab)]
+                            .map((x) => x.toString(16).padStart(2, '0'))
+                            .join('');
+                    };
+                    const hash = async (algorithm, data) => {
+                        return crypto.subtle.digest(algorithm.toUpperCase(), typeof data === 'string' ? encoder.encode(data) : new Uint8Array(data));
+                    };
+                    const hashHex = async (algorithm, data) => {
+                        return ab2hex(await hash(algorithm, data));
+                    };
+                    const searchSecretNumber = async () => {
+                        for (let secretNumber = challenge.start; secretNumber <= challenge.max; secretNumber += 1) {
+                            const t = await hashHex(challenge.algorithm, challenge.salt + secretNumber + challenge.timestamp);
+                            if (t === challenge.challenge) {
+                                const solution = Object.assign(Object.assign({}, challenge), { number: secretNumber });
+                                return solution;
+                            }
+                        }
+                        return null;
+                    };
+                    return searchSecretNumber();
+                };
+                return solveChallenge(subChallenge);
+            }, [subChallenge]);
+            promises.push(inlineWorker.run(inlineWorkerJob).then((ev) => {
+                // finished
+                (ev.statistics.ended - ev.statistics.started) / 1000;
+                //console.log(`the result is ${ev.result}`);
+                //console.log(`time left for calculation: ${secondsLeft}`);
+                return ev.result;
+            }).catch((error) => {
+                // error
+                // console.log(`error`);
+                // console.error(error);
+                return null;
+            }));
+        }
+        return Promise.all(promises)
+            .then((results) => {
+            return results.reduce((acc, val) => {
+                return val !== null ? val : acc;
+            }, null);
+        })
+            .then((solution) => {
+            this.workersPool.forEach((worker) => {
+                this.logger.trace('destroy worker');
+                worker.destroy();
+            });
+            return solution;
         });
     }
     solveChallenge(challenge) {
@@ -243,50 +471,68 @@ let Powshield = (() => {
     let _classDescriptor;
     let _classExtraInitializers = [];
     let _classThis;
+    let _instanceExtraInitializers = [];
     let _solutionInputSelector_decorators;
     let _solutionInputSelector_initializers = [];
     let _solutionInputSelector_extraInitializers = [];
+    let _solutionReadyChanged_decorators;
     _classThis = class {
         constructor(element = resolve(INode), logger = resolve(ILogger).scopeTo('Powshield'), options = resolve(IPowshieldConfiguration), powshieldService = resolve(IPowshieldService), platform = resolve(IPlatform)) {
-            this.element = element;
+            this.element = (__runInitializers(this, _instanceExtraInitializers), element);
             this.logger = logger;
             this.options = options;
             this.powshieldService = powshieldService;
             this.platform = platform;
             this.solutionInputSelector = __runInitializers(this, _solutionInputSelector_initializers, void 0);
-            this.challengeBase64 = __runInitializers(this, _solutionInputSelector_extraInitializers);
-            this.onSubmit = (event) => {
-                event.preventDefault();
-                this.powshieldService.getChallenge()
-                    .then((challenge) => {
-                    return this.powshieldService.solveChallenge(challenge);
-                })
-                    .then((solution) => {
-                    if (!solution) {
-                        throw new Error('Failed to solve challenge');
-                    }
-                    const promises = [];
-                    promises.push(solution);
-                    promises.push(this.powshieldService.verifySolution(solution));
-                    return Promise.all(promises);
-                })
-                    .then((response) => {
-                    if (!response[1]) {
-                        throw new Error('Failed to verify solution');
-                    }
-                    const solutionBase64 = btoa(JSON.stringify(response[0]));
-                    const input = this.element.querySelector(this.solutionInputSelector);
-                    if (!input) {
-                        throw new Error('Failed to find solution input');
-                    }
-                    input.value = solutionBase64;
-                    this.element.submit();
-                })
-                    .catch((error) => {
-                    this.logger.error(error, 'should retry');
-                });
+            this.solutionReady = (__runInitializers(this, _solutionInputSelector_extraInitializers), false);
+            this.timeValidity = 300;
+            this.disableButton = () => {
+                this.submitButton.disabled = true;
+                this.submitButton.style.opacity = '0.5';
+            };
+            this.enableButton = () => {
+                this.submitButton.disabled = false;
+                this.submitButton.style.opacity = '1';
+            };
+            this.computeSolution = () => {
+                if (this.solutionReady === false) {
+                    let date = Date.now();
+                    this.powshieldService.getChallenge()
+                        .then((challenge) => {
+                        return this.powshieldService.solve(challenge);
+                        // return this.powshieldService.solveChallenge(challenge);
+                    })
+                        .then((solution) => {
+                        date = Date.now() - date;
+                        if (!solution) {
+                            throw new Error('Failed to solve challenge');
+                        }
+                        this.logger.trace('solution', solution.number, 'in', date, 'ms');
+                        const promises = [];
+                        promises.push(solution);
+                        promises.push(this.powshieldService.verifySolution(solution));
+                        return Promise.all(promises);
+                    })
+                        .then((response) => {
+                        if (!response[1]) {
+                            throw new Error('Failed to verify solution');
+                        }
+                        const solutionBase64 = btoa(JSON.stringify(response[0]));
+                        const input = this.element.querySelector(this.solutionInputSelector);
+                        if (!input) {
+                            throw new Error('Failed to find solution input');
+                        }
+                        input.value = solutionBase64;
+                        this.solutionReady = true;
+                    })
+                        .catch((error) => {
+                        this.solutionReady = false;
+                        this.logger.error(error, 'should retry');
+                    });
+                }
             };
             this.logger.trace('constructor');
+            this.timeValidity = this.options.get('timeValidity');
         }
         binding() {
             this.logger.trace('binding');
@@ -296,13 +542,38 @@ let Powshield = (() => {
         }
         attached() {
             this.logger.trace('attached');
-            this.element.addEventListener('submit', this.onSubmit);
+            this.submitButton = this.element.querySelector('[type="submit"]');
+            this.disableButton();
+            this.computeSolution();
+            this.interval = this.platform.setInterval(() => {
+                this.logger.trace('interval');
+                this.solutionReady = false;
+                this.computeSolution();
+            }, this.timeValidity * 1000);
+        }
+        detached() {
+            this.logger.trace('detached');
+            if (this.interval) {
+                this.solutionReady = false;
+                this.platform.clearInterval(this.interval);
+            }
+        }
+        solutionReadyChanged(newState, oldState) {
+            this.logger.trace('solutionReadyChanged', this.solutionReady);
+            if (newState === true) {
+                this.enableButton();
+            }
+            else {
+                this.disableButton();
+            }
         }
     };
     __setFunctionName(_classThis, "Powshield");
     (() => {
         const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
         _solutionInputSelector_decorators = [bindable({ primary: true })];
+        _solutionReadyChanged_decorators = [watch('solutionReady')];
+        __esDecorate(_classThis, null, _solutionReadyChanged_decorators, { kind: "method", name: "solutionReadyChanged", static: false, private: false, access: { has: obj => "solutionReadyChanged" in obj, get: obj => obj.solutionReadyChanged }, metadata: _metadata }, null, _instanceExtraInitializers);
         __esDecorate(null, null, _solutionInputSelector_decorators, { kind: "field", name: "solutionInputSelector", static: false, private: false, access: { has: obj => "solutionInputSelector" in obj, get: obj => obj.solutionInputSelector, set: (obj, value) => { obj.solutionInputSelector = value; } }, metadata: _metadata }, _solutionInputSelector_initializers, _solutionInputSelector_extraInitializers);
         __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
         _classThis = _classDescriptor.value;

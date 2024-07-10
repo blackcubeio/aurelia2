@@ -2,6 +2,8 @@ export interface IPowshieldConfig {
     generateChallengeUrl?: string;
     verifySolutionUrl?: string;
     solutionInputSelector?: string;
+    workers?: number;
+    timeValidity?: number;
 }
 export interface IPowshieldConfiguration extends PowshieldConfigure {
 }
