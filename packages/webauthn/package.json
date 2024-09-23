@@ -1,7 +1,7 @@
 {
-  "name": "@blackcube/aurelia2-aria",
+  "name": "@blackcube/aurelia2-webauthn",
   "version": "2.1.0",
-  "description": "Blackcube Aurelia 2 Aria",
+  "description": "Blackcube Aurelia 2 Webauthn",
   "repository": "https://github.com/blackcubeio/blackcube-aurelia2",
   "author": "Gaultier Philippe <pgaultier@gmail.com>",
   "license": "BSD-3-Clause",
@@ -15,7 +15,8 @@
     "clean": "rimraf dist && rimraf .rollup.cache"
   },
   "dependencies": {
-    "@aurelia/validation": "^2.0.0-beta.21",
+    "@aurelia/fetch-client": "^2.0.0-beta.21",
+    "@aurelia/router": "^2.0.0-beta.21",
     "aurelia": "^2.0.0-beta.21"
   },
   "devDependencies": {

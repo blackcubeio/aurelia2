@@ -21,7 +21,7 @@ export class PowshieldConfigure {
             generateChallengeUrl: '/powshield/generate-challenge',
             verifySolutionUrl: '/powshield/verify-solution',
             solutionInputSelector: '#powshieldSolution',
-            workers: 10,
+            workers: navigator.hardwareConcurrency || 10,
             timeValidity: 300
         };
         console.log('PowshieldConfigure constructor');

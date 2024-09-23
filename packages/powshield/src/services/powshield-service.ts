@@ -145,6 +145,7 @@ export class PowshieldService {
                 this.workersPool.forEach((worker) => {
                     this.logger.trace('destroy worker');
                     worker.destroy();
+                    this.workersPool.delete(worker);
                 });
                 return solution;
             });
