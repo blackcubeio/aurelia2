@@ -1,8 +1,9 @@
 import {bindable, customElement, ILogger, INode, IPlatform, resolve} from 'aurelia';
 import {IRouter} from '@aurelia/router';
 import {IWebauthnService} from '../services/webauthn-service';
+import template from './webauthn-login.html';
 
-@customElement('bc-webauthn-login')
+@customElement({name: 'bc-webauthn-login', template})
 export class WebauthnLogin {
 
     @bindable() public route: string = '';

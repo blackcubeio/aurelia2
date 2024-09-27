@@ -1,8 +1,9 @@
 import {bindable, customElement, ILogger, INode, IPlatform, resolve} from 'aurelia';
 import {IRouter} from '@aurelia/router';
 import {IWebauthnService} from '../services/webauthn-service';
+import template from './webauthn-register.html';
 
-@customElement('bc-webauthn-register')
+@customElement({name: 'bc-webauthn-register', template})
 export class WebauthnRegister {
 
     @bindable() public route: string = '';
@@ -36,7 +37,7 @@ export class WebauthnRegister {
 
     public onSubmitRegister(evt: Event) {
         evt.preventDefault();
-        this.logger.debug('Login');
+        this.logger.debug('Register');
         const webauthnRequest = this.user ? this.webauthnService.registerDevice(this.email, this.name) : this.webauthnService.attachDevice();
         webauthnRequest.then((status: boolean) => {
                 if (status) {
