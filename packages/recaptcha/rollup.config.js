@@ -2,7 +2,6 @@
 import conf from '../../rollup.config.js';
 import pkg from './package.json' with { type: "json" };
 
-
 export default {
     ...conf,
     input: 'src/index.ts',
@@ -18,5 +17,5 @@ export default {
             format: 'es'
         }
     ],
-    external: ['aurelia']
+    external: ['aurelia', '@aurelia/fetch-client', '@aurelia/router', '@aurelia/validation']
 };

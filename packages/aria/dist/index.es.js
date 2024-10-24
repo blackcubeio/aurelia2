@@ -1,16 +1,9 @@
-import { DI, customAttribute, bindable, resolve, ILogger, IEventAggregator, IPlatform, INode } from 'aurelia';
+import { DI, resolve, ILogger, IEventAggregator, IPlatform, INode, customAttribute, bindable } from 'aurelia';
 
 const IAriaConfiguration = DI.createInterface('IAriaConfiguration', x => x.singleton(AriaConfigure));
 class AriaConfigure {
     constructor() {
-        this._config = {
-            focusableElementsQuerySelector: '[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"]), [accesskey], summary, canvas, audio, video, details, iframe, [contenteditable]',
-            invalidElementsQuerySelector: '[aria-invalid="true"], :invalid',
-            keysMonitored: [
-                'Escape',
-            ],
-            focusDelay: 100,
-        };
+        this._config = {};
     }
     configure(incoming = {}) {
         Object.assign(this._config, incoming);
@@ -45,7 +38,7 @@ LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
 OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ***************************************************************************** */
-/* global Reflect, Promise, SuppressedError, Symbol */
+/* global Reflect, Promise, SuppressedError, Symbol, Iterator */
 
 
 function __esDecorate(ctor, descriptorIn, decorators, contextIn, initializers, extraInitializers) {
@@ -84,1555 +77,1308 @@ function __runInitializers(thisArg, initializers, value) {
 }
 function __setFunctionName(f, name, prefix) {
     if (typeof name === "symbol") name = name.description ? "[".concat(name.description, "]") : "";
-    return Object.defineProperty(f, "name", { configurable: true, value: name });
+    return Object.defineProperty(f, "name", { configurable: true, value: prefix ? "".concat(prefix, " ", name) : name });
 }
 typeof SuppressedError === "function" ? SuppressedError : function (error, suppressed, message) {
     var e = new Error(message);
     return e.name = "SuppressedError", e.error = error, e.suppressed = suppressed, e;
 };
 
-var HtmlActions;
-(function (HtmlActions) {
-    HtmlActions["define"] = "define";
-    HtmlActions["remove"] = "remove";
-})(HtmlActions || (HtmlActions = {}));
-
-var CurrentChannels;
-(function (CurrentChannels) {
-    CurrentChannels["main"] = "aria:current:main";
-    CurrentChannels["ended"] = "aria:current:ended";
-})(CurrentChannels || (CurrentChannels = {}));
-var CurrentModes;
-(function (CurrentModes) {
-    CurrentModes["page"] = "page";
-    CurrentModes["step"] = "step";
-    CurrentModes["location"] = "location";
-    CurrentModes["date"] = "date";
-    CurrentModes["time"] = "time";
-    CurrentModes["true"] = "true";
-    CurrentModes["false"] = "false";
-})(CurrentModes || (CurrentModes = {}));
-
-let AriaCurrent = (() => {
-    let _classDecorators = [customAttribute("bc-aria-current")];
-    let _classDescriptor;
-    let _classExtraInitializers = [];
-    let _classThis;
-    let _name_decorators;
-    let _name_initializers = [];
-    let _name_extraInitializers = [];
-    let _enabled_decorators;
-    let _enabled_initializers = [];
-    let _enabled_extraInitializers = [];
-    let _mode_decorators;
-    let _mode_initializers = [];
-    let _mode_extraInitializers = [];
-    var AriaCurrent = _classThis = class {
-        constructor(logger = resolve(ILogger), ea = resolve(IEventAggregator), platform = resolve(IPlatform), element = resolve(INode)) {
-            this.logger = logger;
-            this.ea = ea;
-            this.platform = platform;
-            this.element = element;
-            this.name = __runInitializers(this, _name_initializers, void 0);
-            this.enabled = (__runInitializers(this, _name_extraInitializers), __runInitializers(this, _enabled_initializers, true));
-            this.mode = (__runInitializers(this, _enabled_extraInitializers), __runInitializers(this, _mode_initializers, CurrentModes.false));
-            this.disposable = __runInitializers(this, _mode_extraInitializers);
-            this.onAriaCurrent = (data) => {
-                if (data.name == this.name) {
-                    this.logger.trace('onAriaCurrent');
-                    this.mode = data.mode;
-                    const message = {
-                        name: this.name,
-                        mode: this.mode,
-                        action: data.action
-                    };
-                    if (data.action === HtmlActions.define) {
-                        message.action = this.defineCurrent();
-                    }
-                    else if (data.action === HtmlActions.remove) {
-                        message.action = this.removeCurrent();
-                    }
-                    else {
-                        throw new Error('AriaCurrent: action not supported');
-                    }
-                    this.platform.taskQueue.queueTask(() => {
-                        this.ea.publish(CurrentChannels.ended, message);
-                    });
+const IAriaService = DI.createInterface('IAriaService', (x) => x.singleton(AriaService));
+class AriaService {
+    constructor(logger = resolve(ILogger).scopeTo('AriaService'), ea = resolve(IEventAggregator), platform = resolve(IPlatform), element = resolve(INode)) {
+        this.logger = logger;
+        this.ea = ea;
+        this.platform = platform;
+        this.element = element;
+        this.currentFocusedIndex = 0;
+        this.keysMonitored = [
+            'Escape',
+        ];
+        this.focusableElementsQuerySelector = '[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"]), [accesskey], summary, canvas, audio, video, details, iframe, [contenteditable]';
+        this.lastFocusedElement = null;
+        this.keepFocus = false;
+        this.focusDelay = 10;
+        this.currentFocusedIndew = new Map();
+        this.focusableElements = [];
+        this.onFocusIn = (event) => {
+            // find the index of the focused element in the focusable elements list
+            const focusedElement = event.target;
+            this.lastFocusedElement = focusedElement;
+            const focusedIndex = this.focusableElements.indexOf(focusedElement);
+            if (focusedElement && focusedIndex !== -1) {
+                // element is in the focusable elements list
+                if (focusedIndex !== this.currentFocusedIndex) {
+                    this.currentFocusedIndex = focusedIndex;
                 }
-            };
-            this.logger = logger.scopeTo('AriaCurrent');
-            this.logger.trace('constructor');
-        }
-        attached() {
-            this.logger.trace('attached');
-            this.disposable = this.ea.subscribe(CurrentChannels.main, this.onAriaCurrent);
-            if (this.enabled) {
-                this.defineCurrent();
             }
-        }
-        dispose() {
-            this.logger.trace('dispose');
-            this.disposable.dispose();
-        }
-        removeCurrent() {
-            this.element.removeAttribute(AriaCurrent.attribute);
-            return HtmlActions.remove;
-        }
-        defineCurrent() {
-            if (this.mode === CurrentModes.false) {
-                return this.removeCurrent();
-            }
-            this.element.setAttribute(AriaCurrent.attribute, this.mode);
-            return HtmlActions.define;
-        }
-    };
-    __setFunctionName(_classThis, "AriaCurrent");
-    (() => {
-        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
-        _name_decorators = [bindable({ primary: true })];
-        _enabled_decorators = [bindable()];
-        _mode_decorators = [bindable()];
-        __esDecorate(null, null, _name_decorators, { kind: "field", name: "name", static: false, private: false, access: { has: obj => "name" in obj, get: obj => obj.name, set: (obj, value) => { obj.name = value; } }, metadata: _metadata }, _name_initializers, _name_extraInitializers);
-        __esDecorate(null, null, _enabled_decorators, { kind: "field", name: "enabled", static: false, private: false, access: { has: obj => "enabled" in obj, get: obj => obj.enabled, set: (obj, value) => { obj.enabled = value; } }, metadata: _metadata }, _enabled_initializers, _enabled_extraInitializers);
-        __esDecorate(null, null, _mode_decorators, { kind: "field", name: "mode", static: false, private: false, access: { has: obj => "mode" in obj, get: obj => obj.mode, set: (obj, value) => { obj.mode = value; } }, metadata: _metadata }, _mode_initializers, _mode_extraInitializers);
-        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
-        AriaCurrent = _classThis = _classDescriptor.value;
-        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
-    })();
-    _classThis.attribute = 'aria-current';
-    (() => {
-        __runInitializers(_classThis, _classExtraInitializers);
-    })();
-    return AriaCurrent = _classThis;
-})();
-
-var ExpandedChannels;
-(function (ExpandedChannels) {
-    ExpandedChannels["main"] = "aria:expanded:main";
-    ExpandedChannels["ended"] = "aria:expanded:ended";
-})(ExpandedChannels || (ExpandedChannels = {}));
-var ExpandedModes;
-(function (ExpandedModes) {
-    ExpandedModes["true"] = "true";
-    ExpandedModes["false"] = "false";
-})(ExpandedModes || (ExpandedModes = {}));
-
-let AriaExpanded = (() => {
-    let _classDecorators = [customAttribute("bc-aria-expanded")];
-    let _classDescriptor;
-    let _classExtraInitializers = [];
-    let _classThis;
-    let _name_decorators;
-    let _name_initializers = [];
-    let _name_extraInitializers = [];
-    let _enabled_decorators;
-    let _enabled_initializers = [];
-    let _enabled_extraInitializers = [];
-    let _mode_decorators;
-    let _mode_initializers = [];
-    let _mode_extraInitializers = [];
-    var AriaExpanded = _classThis = class {
-        constructor(logger = resolve(ILogger), ea = resolve(IEventAggregator), platform = resolve(IPlatform), element = resolve(INode)) {
-            this.logger = logger;
-            this.ea = ea;
-            this.platform = platform;
-            this.element = element;
-            this.name = __runInitializers(this, _name_initializers, void 0);
-            this.enabled = (__runInitializers(this, _name_extraInitializers), __runInitializers(this, _enabled_initializers, true));
-            this.mode = (__runInitializers(this, _enabled_extraInitializers), __runInitializers(this, _mode_initializers, ExpandedModes.false));
-            this.disposable = __runInitializers(this, _mode_extraInitializers);
-            this.onAriaExpand = (data) => {
-                if (data.name == this.name) {
-                    this.logger.trace('onAriaExpand');
-                    this.mode = data.mode;
-                    const message = {
-                        name: this.name,
-                        mode: this.mode,
-                        action: data.action
-                    };
-                    if (data.action === HtmlActions.define) {
-                        message.action = this.defineExpanded();
-                    }
-                    else if (data.action === HtmlActions.remove) {
-                        message.action = this.removeExpanded();
-                    }
-                    else {
-                        throw new Error('AriaExpanded: action not supported');
-                    }
-                    this.platform.taskQueue.queueTask(() => {
-                        this.ea.publish(ExpandedChannels.ended, message);
-                    });
-                }
-            };
-            this.logger = logger.scopeTo('AriaExpanded');
-            this.logger.trace('constructor');
-        }
-        attached() {
-            this.logger.trace('attached');
-            this.disposable = this.ea.subscribe(ExpandedChannels.main, this.onAriaExpand);
-            if (this.enabled) {
-                this.defineExpanded();
-            }
-        }
-        dispose() {
-            this.logger.trace('dispose');
-            this.disposable.dispose();
-        }
-        removeExpanded() {
-            this.element.removeAttribute(AriaExpanded.attribute);
-            return HtmlActions.remove;
-        }
-        defineExpanded() {
-            this.element.setAttribute(AriaExpanded.attribute, this.mode);
-            return HtmlActions.define;
-        }
-    };
-    __setFunctionName(_classThis, "AriaExpanded");
-    (() => {
-        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
-        _name_decorators = [bindable({ primary: true })];
-        _enabled_decorators = [bindable()];
-        _mode_decorators = [bindable()];
-        __esDecorate(null, null, _name_decorators, { kind: "field", name: "name", static: false, private: false, access: { has: obj => "name" in obj, get: obj => obj.name, set: (obj, value) => { obj.name = value; } }, metadata: _metadata }, _name_initializers, _name_extraInitializers);
-        __esDecorate(null, null, _enabled_decorators, { kind: "field", name: "enabled", static: false, private: false, access: { has: obj => "enabled" in obj, get: obj => obj.enabled, set: (obj, value) => { obj.enabled = value; } }, metadata: _metadata }, _enabled_initializers, _enabled_extraInitializers);
-        __esDecorate(null, null, _mode_decorators, { kind: "field", name: "mode", static: false, private: false, access: { has: obj => "mode" in obj, get: obj => obj.mode, set: (obj, value) => { obj.mode = value; } }, metadata: _metadata }, _mode_initializers, _mode_extraInitializers);
-        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
-        AriaExpanded = _classThis = _classDescriptor.value;
-        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
-    })();
-    _classThis.attribute = 'aria-expanded';
-    (() => {
-        __runInitializers(_classThis, _classExtraInitializers);
-    })();
-    return AriaExpanded = _classThis;
-})();
-
-var HiddenChannels;
-(function (HiddenChannels) {
-    HiddenChannels["main"] = "aria:hidden:main";
-    HiddenChannels["ended"] = "aria:hidden:ended";
-})(HiddenChannels || (HiddenChannels = {}));
-var HiddenModes;
-(function (HiddenModes) {
-    HiddenModes["true"] = "true";
-    HiddenModes["false"] = "false";
-})(HiddenModes || (HiddenModes = {}));
-
-let AriaHidden = (() => {
-    let _classDecorators = [customAttribute("bc-aria-hidden")];
-    let _classDescriptor;
-    let _classExtraInitializers = [];
-    let _classThis;
-    let _name_decorators;
-    let _name_initializers = [];
-    let _name_extraInitializers = [];
-    let _enabled_decorators;
-    let _enabled_initializers = [];
-    let _enabled_extraInitializers = [];
-    let _mode_decorators;
-    let _mode_initializers = [];
-    let _mode_extraInitializers = [];
-    var AriaHidden = _classThis = class {
-        constructor(logger = resolve(ILogger), ea = resolve(IEventAggregator), platform = resolve(IPlatform), element = resolve(INode)) {
-            this.logger = logger;
-            this.ea = ea;
-            this.platform = platform;
-            this.element = element;
-            this.name = __runInitializers(this, _name_initializers, void 0);
-            this.enabled = (__runInitializers(this, _name_extraInitializers), __runInitializers(this, _enabled_initializers, true));
-            this.mode = (__runInitializers(this, _enabled_extraInitializers), __runInitializers(this, _mode_initializers, HiddenModes.true));
-            this.disposable = __runInitializers(this, _mode_extraInitializers);
-            this.onAriaHidden = (data) => {
-                if (data.name == this.name) {
-                    this.logger.trace('onAriaHidden');
-                    this.mode = data.mode;
-                    const message = {
-                        name: this.name,
-                        mode: this.mode,
-                        action: data.action
-                    };
-                    if (data.action === HtmlActions.define) {
-                        message.action = this.defineHidden();
-                    }
-                    else if (data.action === HtmlActions.remove) {
-                        message.action = this.removeHidden();
-                    }
-                    else {
-                        throw new Error('AriaHidden: action not supported');
-                    }
-                    this.platform.taskQueue.queueTask(() => {
-                        this.ea.publish(HiddenChannels.ended, message);
-                    });
-                }
-            };
-            this.logger = logger.scopeTo('AriaHidden');
-            this.logger.trace('constructor');
-        }
-        attached() {
-            this.logger.trace('attached');
-            this.disposable = this.ea.subscribe(HiddenChannels.main, this.onAriaHidden);
-            if (this.enabled) {
-                this.defineHidden();
-            }
-        }
-        dispose() {
-            this.logger.trace('dispose');
-            this.disposable.dispose();
-        }
-        removeHidden() {
-            this.element.removeAttribute(AriaHidden.attribute);
-            return HtmlActions.remove;
-        }
-        defineHidden() {
-            if (this.mode === HiddenModes.true) {
-                this.element.setAttribute(AriaHidden.attribute, this.mode);
-                return HtmlActions.define;
-            }
-            else if (this.mode === HiddenModes.false) {
-                return this.removeHidden();
-            }
-            throw new Error('AriaHidden: mode not supported');
-        }
-    };
-    __setFunctionName(_classThis, "AriaHidden");
-    (() => {
-        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
-        _name_decorators = [bindable({ primary: true })];
-        _enabled_decorators = [bindable()];
-        _mode_decorators = [bindable()];
-        __esDecorate(null, null, _name_decorators, { kind: "field", name: "name", static: false, private: false, access: { has: obj => "name" in obj, get: obj => obj.name, set: (obj, value) => { obj.name = value; } }, metadata: _metadata }, _name_initializers, _name_extraInitializers);
-        __esDecorate(null, null, _enabled_decorators, { kind: "field", name: "enabled", static: false, private: false, access: { has: obj => "enabled" in obj, get: obj => obj.enabled, set: (obj, value) => { obj.enabled = value; } }, metadata: _metadata }, _enabled_initializers, _enabled_extraInitializers);
-        __esDecorate(null, null, _mode_decorators, { kind: "field", name: "mode", static: false, private: false, access: { has: obj => "mode" in obj, get: obj => obj.mode, set: (obj, value) => { obj.mode = value; } }, metadata: _metadata }, _mode_initializers, _mode_extraInitializers);
-        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
-        AriaHidden = _classThis = _classDescriptor.value;
-        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
-    })();
-    _classThis.attribute = 'aria-hidden';
-    (() => {
-        __runInitializers(_classThis, _classExtraInitializers);
-    })();
-    return AriaHidden = _classThis;
-})();
-
-var InvalidChannels;
-(function (InvalidChannels) {
-    InvalidChannels["main"] = "aria:invalid:main";
-    InvalidChannels["ended"] = "aria:invalid:ended";
-})(InvalidChannels || (InvalidChannels = {}));
-var InvalidModes;
-(function (InvalidModes) {
-    InvalidModes["true"] = "true";
-    InvalidModes["false"] = "false";
-})(InvalidModes || (InvalidModes = {}));
-
-let AriaInvalid = (() => {
-    let _classDecorators = [customAttribute("bc-aria-invalid")];
-    let _classDescriptor;
-    let _classExtraInitializers = [];
-    let _classThis;
-    let _name_decorators;
-    let _name_initializers = [];
-    let _name_extraInitializers = [];
-    let _enabled_decorators;
-    let _enabled_initializers = [];
-    let _enabled_extraInitializers = [];
-    let _mode_decorators;
-    let _mode_initializers = [];
-    let _mode_extraInitializers = [];
-    let _describedByEnabled_decorators;
-    let _describedByEnabled_initializers = [];
-    let _describedByEnabled_extraInitializers = [];
-    let _describedById_decorators;
-    let _describedById_initializers = [];
-    let _describedById_extraInitializers = [];
-    let _labelledByEnabled_decorators;
-    let _labelledByEnabled_initializers = [];
-    let _labelledByEnabled_extraInitializers = [];
-    let _labelledById_decorators;
-    let _labelledById_initializers = [];
-    let _labelledById_extraInitializers = [];
-    var AriaInvalid = _classThis = class {
-        constructor(logger = resolve(ILogger), ea = resolve(IEventAggregator), platform = resolve(IPlatform), element = resolve(INode)) {
-            this.logger = logger;
-            this.ea = ea;
-            this.platform = platform;
-            this.element = element;
-            this.name = __runInitializers(this, _name_initializers, void 0);
-            this.enabled = (__runInitializers(this, _name_extraInitializers), __runInitializers(this, _enabled_initializers, true));
-            this.mode = (__runInitializers(this, _enabled_extraInitializers), __runInitializers(this, _mode_initializers, InvalidModes.false));
-            this.describedByEnabled = (__runInitializers(this, _mode_extraInitializers), __runInitializers(this, _describedByEnabled_initializers, true));
-            this.describedById = (__runInitializers(this, _describedByEnabled_extraInitializers), __runInitializers(this, _describedById_initializers, void 0));
-            this.labelledByEnabled = (__runInitializers(this, _describedById_extraInitializers), __runInitializers(this, _labelledByEnabled_initializers, false));
-            this.labelledById = (__runInitializers(this, _labelledByEnabled_extraInitializers), __runInitializers(this, _labelledById_initializers, void 0));
-            this.form = __runInitializers(this, _labelledById_extraInitializers);
-            this.onAriaInvalid = (data) => {
-                let reducedData;
-                let form = null;
-                if (Array.isArray(data)) {
-                    form = data.reduce((previousValue, currentValue, currentIndex) => {
-                        if (previousValue === null && currentValue.form instanceof HTMLFormElement) {
-                            return currentValue.form;
+        };
+        this.onKeyDown = (event) => {
+            if (event.key === 'Tab') {
+                this.logger.trace('onKeyDown: handle Tab key');
+                event.preventDefault();
+                if (event.shiftKey) {
+                    let currentFocusedIndex = this.currentFocusedIndex;
+                    let selectedElement = this.focusableElements[currentFocusedIndex];
+                    do {
+                        this.currentFocusedIndex--;
+                        if (this.currentFocusedIndex < 0) {
+                            this.currentFocusedIndex = this.focusableElements.length - 1;
                         }
-                        else {
-                            return previousValue;
+                        selectedElement = this.focusableElements[this.currentFocusedIndex];
+                        if (this.checkElementAvailable(selectedElement)) {
+                            currentFocusedIndex = this.currentFocusedIndex;
+                            break;
                         }
-                    }, null);
-                    reducedData = data.reduce((previousValue, currentValue, currentIndex) => {
-                        if (currentValue.name === this.name) {
-                            if (previousValue === undefined) {
-                                return currentValue;
-                            }
-                            else {
-                                if (previousValue.action !== currentValue.action) {
-                                    throw new Error('AriaInvalid: multiple actions defined for the same name');
-                                }
-                                let finalValue = currentValue;
-                                if (previousValue.mode === InvalidModes.true || currentValue.mode === InvalidModes.true) {
-                                    finalValue.mode = InvalidModes.true;
-                                }
-                                return finalValue;
-                            }
-                        }
-                        else {
-                            return previousValue;
-                        }
-                    }, undefined);
+                    } while (currentFocusedIndex !== this.currentFocusedIndex);
                 }
                 else {
-                    if (data.form instanceof HTMLFormElement) {
-                        form = data.form;
-                    }
-                    reducedData = data;
-                }
-                // if we are in form and the form is identical to the one that triggered the event
-                if (reducedData !== undefined && reducedData.name == this.name && (form !== null && form === this.form)) {
-                    this.logger.trace('onAriaInvalid');
-                    this.mode = reducedData.mode;
-                    const message = {
-                        name: this.name,
-                        mode: reducedData.mode,
-                        action: reducedData.action
-                    };
-                    if (reducedData.action === HtmlActions.define) {
-                        message.action = this.defineInvalid();
-                    }
-                    else if (reducedData.action === HtmlActions.remove) {
-                        message.action = this.removeInvalid();
-                    }
-                    else {
-                        throw new Error('AriaInvalid: action not supported');
-                    }
-                    this.platform.taskQueue.queueTask(() => {
-                        this.ea.publish(InvalidChannels.ended, message);
-                    });
-                }
-            };
-            this.logger = logger.scopeTo('AriaInvalid');
-            this.logger.trace('constructor');
-        }
-        static convertErrors(resuts, form = null) {
-            const errors = [];
-            resuts.forEach((result) => {
-                let propertyName = undefined;
-                if (typeof (result.propertyName) === 'string') {
-                    propertyName = result.propertyName;
-                }
-                else if (typeof (result.propertyName) === 'number') {
-                    propertyName = result.propertyName.toString();
-                }
-                if (propertyName) {
-                    const error = {
-                        name: propertyName,
-                        mode: result.valid ? InvalidModes.false : InvalidModes.true,
-                        action: HtmlActions.define
-                    };
-                    if (form !== null && form instanceof HTMLFormElement) {
-                        error.form = form;
-                    }
-                    errors.push(error);
-                }
-            });
-            return errors;
-        }
-        attached() {
-            this.logger.trace('attached');
-            this.form = this.element.closest('form');
-            this.disposable = this.ea.subscribe(InvalidChannels.main, this.onAriaInvalid);
-            const describedById = this.element.getAttribute(AriaInvalid.describedByAttribute);
-            if (describedById !== null && describedById !== '') {
-                this.describedById = describedById;
-            }
-            else {
-                this.describedById = this.name;
-            }
-            const labelledById = this.element.getAttribute(AriaInvalid.labelledByAttribute);
-            if (labelledById !== null && labelledById !== '') {
-                this.labelledById = labelledById;
-            }
-            else {
-                this.labelledById = this.name + 'Label';
-            }
-            if (this.enabled) {
-                this.defineInvalid();
-            }
-        }
-        dispose() {
-            this.logger.trace('dispose');
-            if (this.disposable) {
-                this.disposable.dispose();
-            }
-        }
-        removeInvalid() {
-            this.element.removeAttribute(AriaInvalid.attribute);
-            this.element.removeAttribute(AriaInvalid.describedByAttribute);
-            this.element.removeAttribute(AriaInvalid.labelledByAttribute);
-            return HtmlActions.remove;
-        }
-        defineInvalid() {
-            if (this.mode === InvalidModes.true) {
-                this.element.setAttribute(AriaInvalid.attribute, this.mode);
-                if (this.describedByEnabled) {
-                    this.element.setAttribute(AriaInvalid.describedByAttribute, this.describedById);
-                }
-                else {
-                    this.element.removeAttribute(AriaInvalid.describedByAttribute);
-                }
-                if (this.labelledByEnabled) {
-                    this.element.setAttribute(AriaInvalid.labelledByAttribute, this.labelledById);
-                }
-                else {
-                    this.element.removeAttribute(AriaInvalid.labelledByAttribute);
-                }
-                return HtmlActions.define;
-            }
-            else if (this.mode === InvalidModes.false) {
-                return this.removeInvalid();
-            }
-            throw new Error('AriaInvalid: mode not supported');
-        }
-    };
-    __setFunctionName(_classThis, "AriaInvalid");
-    (() => {
-        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
-        _name_decorators = [bindable({ primary: true })];
-        _enabled_decorators = [bindable()];
-        _mode_decorators = [bindable()];
-        _describedByEnabled_decorators = [bindable()];
-        _describedById_decorators = [bindable()];
-        _labelledByEnabled_decorators = [bindable()];
-        _labelledById_decorators = [bindable()];
-        __esDecorate(null, null, _name_decorators, { kind: "field", name: "name", static: false, private: false, access: { has: obj => "name" in obj, get: obj => obj.name, set: (obj, value) => { obj.name = value; } }, metadata: _metadata }, _name_initializers, _name_extraInitializers);
-        __esDecorate(null, null, _enabled_decorators, { kind: "field", name: "enabled", static: false, private: false, access: { has: obj => "enabled" in obj, get: obj => obj.enabled, set: (obj, value) => { obj.enabled = value; } }, metadata: _metadata }, _enabled_initializers, _enabled_extraInitializers);
-        __esDecorate(null, null, _mode_decorators, { kind: "field", name: "mode", static: false, private: false, access: { has: obj => "mode" in obj, get: obj => obj.mode, set: (obj, value) => { obj.mode = value; } }, metadata: _metadata }, _mode_initializers, _mode_extraInitializers);
-        __esDecorate(null, null, _describedByEnabled_decorators, { kind: "field", name: "describedByEnabled", static: false, private: false, access: { has: obj => "describedByEnabled" in obj, get: obj => obj.describedByEnabled, set: (obj, value) => { obj.describedByEnabled = value; } }, metadata: _metadata }, _describedByEnabled_initializers, _describedByEnabled_extraInitializers);
-        __esDecorate(null, null, _describedById_decorators, { kind: "field", name: "describedById", static: false, private: false, access: { has: obj => "describedById" in obj, get: obj => obj.describedById, set: (obj, value) => { obj.describedById = value; } }, metadata: _metadata }, _describedById_initializers, _describedById_extraInitializers);
-        __esDecorate(null, null, _labelledByEnabled_decorators, { kind: "field", name: "labelledByEnabled", static: false, private: false, access: { has: obj => "labelledByEnabled" in obj, get: obj => obj.labelledByEnabled, set: (obj, value) => { obj.labelledByEnabled = value; } }, metadata: _metadata }, _labelledByEnabled_initializers, _labelledByEnabled_extraInitializers);
-        __esDecorate(null, null, _labelledById_decorators, { kind: "field", name: "labelledById", static: false, private: false, access: { has: obj => "labelledById" in obj, get: obj => obj.labelledById, set: (obj, value) => { obj.labelledById = value; } }, metadata: _metadata }, _labelledById_initializers, _labelledById_extraInitializers);
-        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
-        AriaInvalid = _classThis = _classDescriptor.value;
-        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
-    })();
-    _classThis.attribute = 'aria-invalid';
-    _classThis.describedByAttribute = 'aria-describedby';
-    _classThis.labelledByAttribute = 'aria-labelledby';
-    (() => {
-        __runInitializers(_classThis, _classExtraInitializers);
-    })();
-    return AriaInvalid = _classThis;
-})();
-
-var LabelChannels;
-(function (LabelChannels) {
-    LabelChannels["main"] = "aria:label:main";
-    LabelChannels["ended"] = "aria:label:ended";
-})(LabelChannels || (LabelChannels = {}));
-
-let AriaLabel = (() => {
-    let _classDecorators = [customAttribute("bc-aria-label")];
-    let _classDescriptor;
-    let _classExtraInitializers = [];
-    let _classThis;
-    let _name_decorators;
-    let _name_initializers = [];
-    let _name_extraInitializers = [];
-    let _enabled_decorators;
-    let _enabled_initializers = [];
-    let _enabled_extraInitializers = [];
-    let _label_decorators;
-    let _label_initializers = [];
-    let _label_extraInitializers = [];
-    var AriaLabel = _classThis = class {
-        constructor(logger = resolve(ILogger), ea = resolve(IEventAggregator), platform = resolve(IPlatform), element = resolve(INode)) {
-            this.logger = logger;
-            this.ea = ea;
-            this.platform = platform;
-            this.element = element;
-            this.name = __runInitializers(this, _name_initializers, void 0);
-            this.enabled = (__runInitializers(this, _name_extraInitializers), __runInitializers(this, _enabled_initializers, true));
-            this.label = (__runInitializers(this, _enabled_extraInitializers), __runInitializers(this, _label_initializers, ''));
-            this.disposable = __runInitializers(this, _label_extraInitializers);
-            this.onAriaLabel = (data) => {
-                if (data.name === this.name) {
-                    const message = {
-                        name: this.name,
-                        action: data.action
-                    };
-                    if (data.label && data.label !== '') {
-                        message.label = data.label;
-                        this.label = data.label;
-                    }
-                    else {
-                        this.label = '';
-                    }
-                    if (data.action === HtmlActions.define) {
-                        message.action = this.defineLabel();
-                    }
-                    else if (data.action === HtmlActions.remove) {
-                        message.action = this.removeLabel();
-                    }
-                    else {
-                        throw new Error('AriaLabel: action not supported');
-                    }
-                    this.platform.taskQueue.queueTask(() => {
-                        this.ea.publish(LabelChannels.ended, message);
-                    });
-                }
-            };
-            this.logger = logger.scopeTo('AriaLabel');
-            this.logger.trace('constructor');
-        }
-        attached() {
-            this.logger.trace('attached');
-            this.disposable = this.ea.subscribe(LabelChannels.main, this.onAriaLabel);
-            if (this.enabled) {
-                this.defineLabel();
-            }
-        }
-        dispose() {
-            this.logger.trace('dispose');
-            this.disposable.dispose();
-        }
-        removeLabel() {
-            this.element.removeAttribute(AriaLabel.attribute);
-            return HtmlActions.remove;
-        }
-        defineLabel() {
-            if (this.label !== '') {
-                this.element.setAttribute(AriaLabel.attribute, this.label);
-                return HtmlActions.define;
-            }
-            else {
-                return this.removeLabel();
-            }
-        }
-    };
-    __setFunctionName(_classThis, "AriaLabel");
-    (() => {
-        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
-        _name_decorators = [bindable({ primary: true })];
-        _enabled_decorators = [bindable()];
-        _label_decorators = [bindable()];
-        __esDecorate(null, null, _name_decorators, { kind: "field", name: "name", static: false, private: false, access: { has: obj => "name" in obj, get: obj => obj.name, set: (obj, value) => { obj.name = value; } }, metadata: _metadata }, _name_initializers, _name_extraInitializers);
-        __esDecorate(null, null, _enabled_decorators, { kind: "field", name: "enabled", static: false, private: false, access: { has: obj => "enabled" in obj, get: obj => obj.enabled, set: (obj, value) => { obj.enabled = value; } }, metadata: _metadata }, _enabled_initializers, _enabled_extraInitializers);
-        __esDecorate(null, null, _label_decorators, { kind: "field", name: "label", static: false, private: false, access: { has: obj => "label" in obj, get: obj => obj.label, set: (obj, value) => { obj.label = value; } }, metadata: _metadata }, _label_initializers, _label_extraInitializers);
-        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
-        AriaLabel = _classThis = _classDescriptor.value;
-        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
-    })();
-    _classThis.attribute = 'aria-label';
-    (() => {
-        __runInitializers(_classThis, _classExtraInitializers);
-    })();
-    return AriaLabel = _classThis;
-})();
-
-var LiveChannels;
-(function (LiveChannels) {
-    LiveChannels["main"] = "aria:live:main";
-    LiveChannels["ended"] = "aria:live:ended";
-})(LiveChannels || (LiveChannels = {}));
-var LiveModes;
-(function (LiveModes) {
-    LiveModes["off"] = "off";
-    LiveModes["polite"] = "polite";
-    LiveModes["assertive"] = "assertive";
-})(LiveModes || (LiveModes = {}));
-
-let AriaLive = (() => {
-    let _classDecorators = [customAttribute("bc-aria-live")];
-    let _classDescriptor;
-    let _classExtraInitializers = [];
-    let _classThis;
-    let _name_decorators;
-    let _name_initializers = [];
-    let _name_extraInitializers = [];
-    let _mode_decorators;
-    let _mode_initializers = [];
-    let _mode_extraInitializers = [];
-    let _enabled_decorators;
-    let _enabled_initializers = [];
-    let _enabled_extraInitializers = [];
-    var AriaLive = _classThis = class {
-        constructor(logger = resolve(ILogger), ea = resolve(IEventAggregator), platform = resolve(IPlatform), element = resolve(INode)) {
-            this.logger = logger;
-            this.ea = ea;
-            this.platform = platform;
-            this.element = element;
-            this.name = __runInitializers(this, _name_initializers, void 0);
-            this.mode = (__runInitializers(this, _name_extraInitializers), __runInitializers(this, _mode_initializers, LiveModes.polite));
-            this.enabled = (__runInitializers(this, _mode_extraInitializers), __runInitializers(this, _enabled_initializers, true));
-            this.disposable = __runInitializers(this, _enabled_extraInitializers);
-            this.onAriaLive = (data) => {
-                if (data.name === this.name) {
-                    this.mode = data.mode;
-                    const message = {
-                        name: this.name,
-                        mode: this.mode,
-                        action: data.action
-                    };
-                    if (data.action === HtmlActions.define) {
-                        message.action = this.defineLive();
-                    }
-                    else if (data.action === HtmlActions.remove) {
-                        message.action = this.removeLive();
-                    }
-                    else {
-                        throw new Error('AriaLive: action not supported');
-                    }
-                    this.platform.taskQueue.queueTask(() => {
-                        this.ea.publish(LiveChannels.ended, message);
-                    });
-                }
-            };
-            this.logger = logger.scopeTo('AriaLive');
-            this.logger.trace('constructor');
-        }
-        attached() {
-            this.logger.trace('attached');
-            this.disposable = this.ea.subscribe(LiveChannels.main, this.onAriaLive);
-            if (this.enabled) {
-                if (this.mode !== LiveModes.off) {
-                    this.element.setAttribute(AriaLive.attribute, this.mode);
-                }
-                else {
-                    this.element.removeAttribute(AriaLive.attribute);
-                }
-            }
-        }
-        dispose() {
-            this.logger.trace('dispose');
-            this.disposable.dispose();
-        }
-        removeLive() {
-            this.element.removeAttribute(AriaLive.attribute);
-            return HtmlActions.remove;
-        }
-        defineLive() {
-            if (this.mode !== LiveModes.off) {
-                this.element.setAttribute(AriaLive.attribute, this.mode);
-                return HtmlActions.define;
-            }
-            else {
-                return this.removeLive();
-            }
-        }
-    };
-    __setFunctionName(_classThis, "AriaLive");
-    (() => {
-        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
-        _name_decorators = [bindable({ primary: true })];
-        _mode_decorators = [bindable()];
-        _enabled_decorators = [bindable()];
-        __esDecorate(null, null, _name_decorators, { kind: "field", name: "name", static: false, private: false, access: { has: obj => "name" in obj, get: obj => obj.name, set: (obj, value) => { obj.name = value; } }, metadata: _metadata }, _name_initializers, _name_extraInitializers);
-        __esDecorate(null, null, _mode_decorators, { kind: "field", name: "mode", static: false, private: false, access: { has: obj => "mode" in obj, get: obj => obj.mode, set: (obj, value) => { obj.mode = value; } }, metadata: _metadata }, _mode_initializers, _mode_extraInitializers);
-        __esDecorate(null, null, _enabled_decorators, { kind: "field", name: "enabled", static: false, private: false, access: { has: obj => "enabled" in obj, get: obj => obj.enabled, set: (obj, value) => { obj.enabled = value; } }, metadata: _metadata }, _enabled_initializers, _enabled_extraInitializers);
-        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
-        AriaLive = _classThis = _classDescriptor.value;
-        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
-    })();
-    _classThis.attribute = 'aria-live';
-    (() => {
-        __runInitializers(_classThis, _classExtraInitializers);
-    })();
-    return AriaLive = _classThis;
-})();
-
-var ModalChannels;
-(function (ModalChannels) {
-    ModalChannels["main"] = "aria:modal:main";
-    ModalChannels["ended"] = "aria:modal:ended";
-})(ModalChannels || (ModalChannels = {}));
-var ModalModes;
-(function (ModalModes) {
-    ModalModes["true"] = "true";
-    ModalModes["false"] = "false";
-})(ModalModes || (ModalModes = {}));
-var ModalRoles;
-(function (ModalRoles) {
-    ModalRoles["dialog"] = "dialog";
-    ModalRoles["alertdialog"] = "alertdialog";
-})(ModalRoles || (ModalRoles = {}));
-
-let AriaModal = (() => {
-    let _classDecorators = [customAttribute("bc-aria-modal")];
-    let _classDescriptor;
-    let _classExtraInitializers = [];
-    let _classThis;
-    let _name_decorators;
-    let _name_initializers = [];
-    let _name_extraInitializers = [];
-    let _enabled_decorators;
-    let _enabled_initializers = [];
-    let _enabled_extraInitializers = [];
-    let _tabindexEnabled_decorators;
-    let _tabindexEnabled_initializers = [];
-    let _tabindexEnabled_extraInitializers = [];
-    let _mode_decorators;
-    let _mode_initializers = [];
-    let _mode_extraInitializers = [];
-    let _role_decorators;
-    let _role_initializers = [];
-    let _role_extraInitializers = [];
-    var AriaModal = _classThis = class {
-        constructor(logger = resolve(ILogger), ea = resolve(IEventAggregator), platform = resolve(IPlatform), element = resolve(INode)) {
-            this.logger = logger;
-            this.ea = ea;
-            this.platform = platform;
-            this.element = element;
-            this.name = __runInitializers(this, _name_initializers, void 0);
-            this.enabled = (__runInitializers(this, _name_extraInitializers), __runInitializers(this, _enabled_initializers, true));
-            this.tabindexEnabled = (__runInitializers(this, _enabled_extraInitializers), __runInitializers(this, _tabindexEnabled_initializers, false));
-            this.mode = (__runInitializers(this, _tabindexEnabled_extraInitializers), __runInitializers(this, _mode_initializers, ModalModes.false));
-            this.role = (__runInitializers(this, _mode_extraInitializers), __runInitializers(this, _role_initializers, ModalRoles.dialog));
-            this.defaultTabindex = (__runInitializers(this, _role_extraInitializers), '');
-            this.onAriaModal = (data) => {
-                if (data.name == this.name) {
-                    this.logger.trace('onAriaModal');
-                    this.mode = data.mode;
-                    if (data.role) {
-                        this.role = data.role;
-                    }
-                    const message = {
-                        name: this.name,
-                        mode: this.mode,
-                        action: data.action,
-                        role: this.role
-                    };
-                    if (data.action === HtmlActions.define) {
-                        message.action = this.defineModal();
-                    }
-                    else if (data.action === HtmlActions.remove) {
-                        message.action = this.removeModal();
-                    }
-                    else {
-                        throw new Error('AriaModal: action not supported');
-                    }
-                    this.platform.taskQueue.queueTask(() => {
-                        this.ea.publish(ModalChannels.ended, message);
-                    });
-                }
-            };
-            this.logger = logger.scopeTo('AriaModal');
-            this.logger.trace('constructor');
-        }
-        attached() {
-            this.logger.trace('attached');
-            this.disposable = this.ea.subscribe(ModalChannels.main, this.onAriaModal);
-            const currentRole = this.element.getAttribute(AriaModal.roleAttribute);
-            if (currentRole !== null && Object.values(ModalRoles).includes(currentRole)) {
-                this.role = currentRole;
-            }
-            if (this.tabindexEnabled) {
-                const currentTabindex = this.element.getAttribute(AriaModal.tabindexAttribute);
-                if (currentTabindex !== null) {
-                    this.defaultTabindex = currentTabindex;
-                }
-            }
-            if (this.enabled) {
-                this.defineModal();
-            }
-        }
-        dispose() {
-            this.logger.trace('dispose');
-            this.disposable.dispose();
-        }
-        removeModal() {
-            this.element.removeAttribute(AriaModal.attribute);
-            this.element.removeAttribute(AriaModal.roleAttribute);
-            if (this.tabindexEnabled) {
-                this.element.setAttribute(AriaModal.tabindexAttribute, '-1');
-            }
-            return HtmlActions.remove;
-        }
-        defineModal() {
-            if (this.mode === ModalModes.true) {
-                this.element.setAttribute(AriaModal.attribute, this.mode);
-                this.element.setAttribute(AriaModal.roleAttribute, this.role);
-                if (this.tabindexEnabled) {
-                    if (this.defaultTabindex && this.defaultTabindex !== '') {
-                        this.element.setAttribute(AriaModal.tabindexAttribute, this.defaultTabindex);
-                    }
-                    else {
-                        this.element.removeAttribute(AriaModal.tabindexAttribute);
-                    }
-                }
-                return HtmlActions.define;
-            }
-            else if (this.mode === ModalModes.false) {
-                return this.removeModal();
-            }
-            throw new Error('AriaModal: mode not supported');
-        }
-    };
-    __setFunctionName(_classThis, "AriaModal");
-    (() => {
-        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
-        _name_decorators = [bindable({ primary: true })];
-        _enabled_decorators = [bindable()];
-        _tabindexEnabled_decorators = [bindable()];
-        _mode_decorators = [bindable()];
-        _role_decorators = [bindable()];
-        __esDecorate(null, null, _name_decorators, { kind: "field", name: "name", static: false, private: false, access: { has: obj => "name" in obj, get: obj => obj.name, set: (obj, value) => { obj.name = value; } }, metadata: _metadata }, _name_initializers, _name_extraInitializers);
-        __esDecorate(null, null, _enabled_decorators, { kind: "field", name: "enabled", static: false, private: false, access: { has: obj => "enabled" in obj, get: obj => obj.enabled, set: (obj, value) => { obj.enabled = value; } }, metadata: _metadata }, _enabled_initializers, _enabled_extraInitializers);
-        __esDecorate(null, null, _tabindexEnabled_decorators, { kind: "field", name: "tabindexEnabled", static: false, private: false, access: { has: obj => "tabindexEnabled" in obj, get: obj => obj.tabindexEnabled, set: (obj, value) => { obj.tabindexEnabled = value; } }, metadata: _metadata }, _tabindexEnabled_initializers, _tabindexEnabled_extraInitializers);
-        __esDecorate(null, null, _mode_decorators, { kind: "field", name: "mode", static: false, private: false, access: { has: obj => "mode" in obj, get: obj => obj.mode, set: (obj, value) => { obj.mode = value; } }, metadata: _metadata }, _mode_initializers, _mode_extraInitializers);
-        __esDecorate(null, null, _role_decorators, { kind: "field", name: "role", static: false, private: false, access: { has: obj => "role" in obj, get: obj => obj.role, set: (obj, value) => { obj.role = value; } }, metadata: _metadata }, _role_initializers, _role_extraInitializers);
-        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
-        AriaModal = _classThis = _classDescriptor.value;
-        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
-    })();
-    _classThis.attribute = 'aria-modal';
-    _classThis.roleAttribute = 'role';
-    _classThis.tabindexAttribute = 'tabindex';
-    (() => {
-        __runInitializers(_classThis, _classExtraInitializers);
-    })();
-    return AriaModal = _classThis;
-})();
-
-var SelectedChannels;
-(function (SelectedChannels) {
-    SelectedChannels["main"] = "aria:selected:main";
-    SelectedChannels["ended"] = "aria:selected:ended";
-})(SelectedChannels || (SelectedChannels = {}));
-var SelectedModes;
-(function (SelectedModes) {
-    SelectedModes["true"] = "true";
-    SelectedModes["false"] = "false";
-})(SelectedModes || (SelectedModes = {}));
-
-let AriaSelected = (() => {
-    let _classDecorators = [customAttribute("bc-aria-selected")];
-    let _classDescriptor;
-    let _classExtraInitializers = [];
-    let _classThis;
-    let _name_decorators;
-    let _name_initializers = [];
-    let _name_extraInitializers = [];
-    let _enabled_decorators;
-    let _enabled_initializers = [];
-    let _enabled_extraInitializers = [];
-    let _mode_decorators;
-    let _mode_initializers = [];
-    let _mode_extraInitializers = [];
-    var AriaSelected = _classThis = class {
-        constructor(logger = resolve(ILogger), ea = resolve(IEventAggregator), platform = resolve(IPlatform), element = resolve(INode)) {
-            this.logger = logger;
-            this.ea = ea;
-            this.platform = platform;
-            this.element = element;
-            this.name = __runInitializers(this, _name_initializers, void 0);
-            this.enabled = (__runInitializers(this, _name_extraInitializers), __runInitializers(this, _enabled_initializers, true));
-            this.mode = (__runInitializers(this, _enabled_extraInitializers), __runInitializers(this, _mode_initializers, SelectedModes.false));
-            this.disposable = __runInitializers(this, _mode_extraInitializers);
-            this.onAriaSelected = (data) => {
-                if (data.name == this.name) {
-                    this.logger.trace('onAriaSelected');
-                    this.mode = data.mode;
-                    const message = {
-                        name: this.name,
-                        mode: this.mode,
-                        action: data.action
-                    };
-                    if (data.action === HtmlActions.define) {
-                        message.action = this.defineSelected();
-                    }
-                    else if (data.action === HtmlActions.remove) {
-                        message.action = this.removeSelected();
-                    }
-                    else {
-                        throw new Error('AriaSelected: action not supported');
-                    }
-                    this.platform.taskQueue.queueTask(() => {
-                        this.ea.publish(SelectedChannels.ended, message);
-                    });
-                }
-            };
-            this.logger = logger.scopeTo('AriaSelected');
-            this.logger.trace('constructor');
-        }
-        attached() {
-            this.logger.trace('attached');
-            this.disposable = this.ea.subscribe(SelectedChannels.main, this.onAriaSelected);
-            if (this.enabled) {
-                this.defineSelected();
-            }
-        }
-        dispose() {
-            this.logger.trace('dispose');
-            this.disposable.dispose();
-        }
-        removeSelected() {
-            this.element.removeAttribute(AriaSelected.attribute);
-            return HtmlActions.remove;
-        }
-        defineSelected() {
-            if (this.mode === SelectedModes.false) {
-                return this.removeSelected();
-            }
-            this.element.setAttribute(AriaSelected.attribute, this.mode);
-            return HtmlActions.define;
-        }
-    };
-    __setFunctionName(_classThis, "AriaSelected");
-    (() => {
-        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
-        _name_decorators = [bindable({ primary: true })];
-        _enabled_decorators = [bindable()];
-        _mode_decorators = [bindable()];
-        __esDecorate(null, null, _name_decorators, { kind: "field", name: "name", static: false, private: false, access: { has: obj => "name" in obj, get: obj => obj.name, set: (obj, value) => { obj.name = value; } }, metadata: _metadata }, _name_initializers, _name_extraInitializers);
-        __esDecorate(null, null, _enabled_decorators, { kind: "field", name: "enabled", static: false, private: false, access: { has: obj => "enabled" in obj, get: obj => obj.enabled, set: (obj, value) => { obj.enabled = value; } }, metadata: _metadata }, _enabled_initializers, _enabled_extraInitializers);
-        __esDecorate(null, null, _mode_decorators, { kind: "field", name: "mode", static: false, private: false, access: { has: obj => "mode" in obj, get: obj => obj.mode, set: (obj, value) => { obj.mode = value; } }, metadata: _metadata }, _mode_initializers, _mode_extraInitializers);
-        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
-        AriaSelected = _classThis = _classDescriptor.value;
-        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
-    })();
-    _classThis.attribute = 'aria-selected';
-    (() => {
-        __runInitializers(_classThis, _classExtraInitializers);
-    })();
-    return AriaSelected = _classThis;
-})();
-
-var FocusChannels;
-(function (FocusChannels) {
-    FocusChannels["main"] = "html:focus:main";
-    FocusChannels["ended"] = "html:focus:ended";
-})(FocusChannels || (FocusChannels = {}));
-
-let Focus = (() => {
-    let _classDecorators = [customAttribute("bc-focus")];
-    let _classDescriptor;
-    let _classExtraInitializers = [];
-    let _classThis;
-    let _name_decorators;
-    let _name_initializers = [];
-    let _name_extraInitializers = [];
-    let _enabled_decorators;
-    let _enabled_initializers = [];
-    let _enabled_extraInitializers = [];
-    _classThis = class {
-        constructor(logger = resolve(ILogger), options = resolve(IAriaConfiguration), ea = resolve(IEventAggregator), platform = resolve(IPlatform), element = resolve(INode)) {
-            this.logger = logger;
-            this.options = options;
-            this.ea = ea;
-            this.platform = platform;
-            this.element = element;
-            this.name = __runInitializers(this, _name_initializers, void 0);
-            this.enabled = (__runInitializers(this, _name_extraInitializers), __runInitializers(this, _enabled_initializers, false));
-            this.disposable = __runInitializers(this, _enabled_extraInitializers);
-            this.onFocus = (data) => {
-                if (data.name === this.name) {
-                    const message = {
-                        name: this.name,
-                        action: data.action
-                    };
-                    if (data.action === HtmlActions.define) {
-                        message.action = this.defineFocus();
-                    }
-                    else if (data.action === HtmlActions.remove) {
-                        message.action = this.removeFocus();
-                    }
-                    this.ea.publish(FocusChannels.ended, message);
-                }
-            };
-            this.logger = logger.scopeTo('Focus');
-            this.logger.trace('constructor');
-            this.focusDelay = this.options.get('focusDelay');
-        }
-        attached() {
-            this.logger.trace('attached');
-            this.disposable = this.ea.subscribe(FocusChannels.main, this.onFocus);
-            if (this.enabled) {
-                this.platform.taskQueue.queueTask(() => {
-                    this.platform.requestAnimationFrame(() => {
-                        this.element.focus();
-                    });
-                }, { delay: this.focusDelay });
-            }
-        }
-        detached() {
-            this.logger.trace('detached');
-        }
-        dispose() {
-            this.logger.trace('dispose');
-            this.disposable.dispose();
-        }
-        removeFocus() {
-            this.platform.taskQueue.queueTask(() => {
-                this.platform.requestAnimationFrame(() => {
-                    this.element.blur();
-                });
-            }, { delay: this.focusDelay });
-            return HtmlActions.remove;
-        }
-        defineFocus() {
-            this.platform.taskQueue.queueTask(() => {
-                this.platform.requestAnimationFrame(() => {
-                    this.element.focus();
-                });
-            }, { delay: this.focusDelay });
-            return HtmlActions.define;
-        }
-    };
-    __setFunctionName(_classThis, "Focus");
-    (() => {
-        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
-        _name_decorators = [bindable({ primary: true })];
-        _enabled_decorators = [bindable()];
-        __esDecorate(null, null, _name_decorators, { kind: "field", name: "name", static: false, private: false, access: { has: obj => "name" in obj, get: obj => obj.name, set: (obj, value) => { obj.name = value; } }, metadata: _metadata }, _name_initializers, _name_extraInitializers);
-        __esDecorate(null, null, _enabled_decorators, { kind: "field", name: "enabled", static: false, private: false, access: { has: obj => "enabled" in obj, get: obj => obj.enabled, set: (obj, value) => { obj.enabled = value; } }, metadata: _metadata }, _enabled_initializers, _enabled_extraInitializers);
-        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
-        _classThis = _classDescriptor.value;
-        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
-    })();
-    _classThis.attribute = 'focus';
-    (() => {
-        __runInitializers(_classThis, _classExtraInitializers);
-    })();
-    return _classThis;
-})();
-
-var TabindexChannels;
-(function (TabindexChannels) {
-    TabindexChannels["main"] = "html:tabindex:main";
-    TabindexChannels["ended"] = "html:tabindex:ended";
-})(TabindexChannels || (TabindexChannels = {}));
-
-let Tabindex = (() => {
-    let _classDecorators = [customAttribute("bc-tabindex")];
-    let _classDescriptor;
-    let _classExtraInitializers = [];
-    let _classThis;
-    let _name_decorators;
-    let _name_initializers = [];
-    let _name_extraInitializers = [];
-    let _enabled_decorators;
-    let _enabled_initializers = [];
-    let _enabled_extraInitializers = [];
-    let _enabledDisabled_decorators;
-    let _enabledDisabled_initializers = [];
-    let _enabledDisabled_extraInitializers = [];
-    let _value_decorators;
-    let _value_initializers = [];
-    let _value_extraInitializers = [];
-    var Tabindex = _classThis = class {
-        constructor(logger = resolve(ILogger), ea = resolve(IEventAggregator), platform = resolve(IPlatform), element = resolve(INode)) {
-            this.logger = logger;
-            this.ea = ea;
-            this.platform = platform;
-            this.element = element;
-            this.name = __runInitializers(this, _name_initializers, void 0);
-            this.enabled = (__runInitializers(this, _name_extraInitializers), __runInitializers(this, _enabled_initializers, true));
-            this.enabledDisabled = (__runInitializers(this, _enabled_extraInitializers), __runInitializers(this, _enabledDisabled_initializers, false));
-            this.value = (__runInitializers(this, _enabledDisabled_extraInitializers), __runInitializers(this, _value_initializers, ''));
-            this.disposable = __runInitializers(this, _value_extraInitializers);
-            this.previousValue = '';
-            this.onTabindex = (data) => {
-                if (data.name === this.name) {
-                    const message = {
-                        name: this.name,
-                        action: data.action,
-                        value: data.value,
-                    };
-                    if (data.action === HtmlActions.define) {
-                        this.rotateTabindex(data.value);
-                    }
-                    else if (data.action === HtmlActions.remove) {
-                        this.rotateTabindex('');
-                    }
-                    message.value = this.value;
-                    if (this.value !== '' && HtmlActions.define === data.action) {
-                        message.action = this.defineTabindex();
-                    }
-                    else if (this.value === '' || HtmlActions.remove === data.action) {
-                        message.action = this.removeTabindex();
-                    }
-                    this.platform.taskQueue.queueTask(() => {
-                        this.ea.publish(TabindexChannels.ended, message);
-                    });
-                }
-            };
-            this.logger = logger.scopeTo('AriaTabindexDisabled');
-            this.logger.trace('constructor');
-        }
-        attached() {
-            this.logger.trace('attached');
-            this.disposable = this.ea.subscribe(TabindexChannels.main, this.onTabindex);
-            if (this.element.hasAttribute(Tabindex.attribute)) {
-                this.value = this.element.getAttribute(Tabindex.attribute);
-            }
-            if (this.enabled) {
-                this.defineTabindex();
-            }
-        }
-        dispose() {
-            this.logger.trace('dispose');
-            this.disposable.dispose();
-        }
-        rotateTabindex(value) {
-            if (value === 'revert' || value === '') {
-                [this.previousValue, this.value] = [this.value, this.previousValue];
-            }
-            else if (value !== '') {
-                [this.previousValue, this.value] = [this.value, value];
-            }
-        }
-        removeTabindex() {
-            this.element.removeAttribute(Tabindex.attribute);
-            if (this.enabledDisabled) {
-                this.element.removeAttribute(Tabindex.disabledAttribute);
-            }
-            return HtmlActions.remove;
-        }
-        defineTabindex() {
-            if (this.value === '') {
-                return this.removeTabindex();
-            }
-            else if (this.value === '-1') {
-                this.element.setAttribute(Tabindex.attribute, this.value);
-                if (this.enabledDisabled) {
-                    this.element.setAttribute(Tabindex.disabledAttribute, 'true');
-                }
-            }
-            else {
-                this.element.setAttribute(Tabindex.attribute, this.value);
-                if (this.enabledDisabled) {
-                    this.element.removeAttribute(Tabindex.disabledAttribute);
-                }
-            }
-            return HtmlActions.define;
-        }
-    };
-    __setFunctionName(_classThis, "Tabindex");
-    (() => {
-        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
-        _name_decorators = [bindable({ primary: true })];
-        _enabled_decorators = [bindable()];
-        _enabledDisabled_decorators = [bindable()];
-        _value_decorators = [bindable()];
-        __esDecorate(null, null, _name_decorators, { kind: "field", name: "name", static: false, private: false, access: { has: obj => "name" in obj, get: obj => obj.name, set: (obj, value) => { obj.name = value; } }, metadata: _metadata }, _name_initializers, _name_extraInitializers);
-        __esDecorate(null, null, _enabled_decorators, { kind: "field", name: "enabled", static: false, private: false, access: { has: obj => "enabled" in obj, get: obj => obj.enabled, set: (obj, value) => { obj.enabled = value; } }, metadata: _metadata }, _enabled_initializers, _enabled_extraInitializers);
-        __esDecorate(null, null, _enabledDisabled_decorators, { kind: "field", name: "enabledDisabled", static: false, private: false, access: { has: obj => "enabledDisabled" in obj, get: obj => obj.enabledDisabled, set: (obj, value) => { obj.enabledDisabled = value; } }, metadata: _metadata }, _enabledDisabled_initializers, _enabledDisabled_extraInitializers);
-        __esDecorate(null, null, _value_decorators, { kind: "field", name: "value", static: false, private: false, access: { has: obj => "value" in obj, get: obj => obj.value, set: (obj, value) => { obj.value = value; } }, metadata: _metadata }, _value_initializers, _value_extraInitializers);
-        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
-        Tabindex = _classThis = _classDescriptor.value;
-        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
-    })();
-    _classThis.attribute = 'tabindex';
-    _classThis.disabledAttribute = 'aria-disabled';
-    (() => {
-        __runInitializers(_classThis, _classExtraInitializers);
-    })();
-    return Tabindex = _classThis;
-})();
-
-var TrapFocusChannels;
-(function (TrapFocusChannels) {
-    TrapFocusChannels["main"] = "html:trapfocus:main";
-    TrapFocusChannels["ended"] = "html:trapfocus:ended";
-    TrapFocusChannels["keydown"] = "html:trapfocus:keydown";
-})(TrapFocusChannels || (TrapFocusChannels = {}));
-
-let TrapFocus = (() => {
-    let _classDecorators = [customAttribute("bc-trap-focus")];
-    let _classDescriptor;
-    let _classExtraInitializers = [];
-    let _classThis;
-    let _name_decorators;
-    let _name_initializers = [];
-    let _name_extraInitializers = [];
-    let _enabled_decorators;
-    let _enabled_initializers = [];
-    let _enabled_extraInitializers = [];
-    var TrapFocus = _classThis = class {
-        constructor(options = resolve(IAriaConfiguration), logger = resolve(ILogger), ea = resolve(IEventAggregator), platform = resolve(IPlatform), element = resolve(INode)) {
-            this.options = options;
-            this.logger = logger;
-            this.ea = ea;
-            this.platform = platform;
-            this.element = element;
-            this.name = __runInitializers(this, _name_initializers, void 0);
-            this.enabled = (__runInitializers(this, _name_extraInitializers), __runInitializers(this, _enabled_initializers, false));
-            this.disposable = __runInitializers(this, _enabled_extraInitializers);
-            this.focusableElements = [];
-            this.currentFocusedIndex = 0;
-            this.currentGroups = [];
-            this.availableGroups = [];
-            this.keysMonitored = [];
-            this.focusableElementsQuerySelector = '';
-            this.lastFocusedElement = null;
-            this.keepFocus = false;
-            this.onFocusIn = (event) => {
-                if (this.enabled) {
-                    // find the index of the focused element in the focusable elements list
-                    const focusedElement = event.target;
-                    this.lastFocusedElement = focusedElement;
-                    const focusedIndex = this.focusableElements.indexOf(focusedElement);
-                    if (focusedElement && focusedIndex !== -1) {
-                        // element is in the focusable elements list
-                        if (focusedIndex !== this.currentFocusedIndex) {
-                            this.currentFocusedIndex = focusedIndex;
+                    let currentFocusedIndex = this.currentFocusedIndex;
+                    let selectedElement = this.focusableElements[currentFocusedIndex];
+                    do {
+                        this.currentFocusedIndex++;
+                        if (this.currentFocusedIndex >= this.focusableElements.length) {
+                            this.currentFocusedIndex = 0;
                         }
-                    }
-                }
-            };
-            this.onKeyDown = (event) => {
-                if (event.key === 'Tab') {
-                    if (this.enabled) {
-                        this.logger.trace('onKeyDown: handle Tab key');
-                        event.preventDefault();
-                        if (event.shiftKey) {
-                            this.currentFocusedIndex--;
-                            if (this.currentFocusedIndex < 0) {
-                                this.currentFocusedIndex = this.focusableElements.length - 1;
-                            }
+                        selectedElement = this.focusableElements[this.currentFocusedIndex];
+                        if (this.checkElementAvailable(selectedElement)) {
+                            currentFocusedIndex = this.currentFocusedIndex;
+                            break;
                         }
-                        else {
-                            this.currentFocusedIndex++;
-                            if (this.currentFocusedIndex >= this.focusableElements.length) {
-                                this.currentFocusedIndex = 0;
-                            }
-                        }
-                        this.focusElementByIndex(this.currentFocusedIndex);
-                    }
-                }
-                else if (this.keysMonitored.includes(event.key)) {
-                    event.preventDefault();
-                    const message = {
-                        name: this.name,
-                        code: event.code,
-                        shiftKey: event.shiftKey,
-                        group: this.getGroups()
-                    };
-                    this.ea.publish(TrapFocusChannels.keydown, message);
-                }
-            };
-            this.onTrapFocus = (data) => {
-                if (data.name === this.name) {
-                    const message = {
-                        name: this.name,
-                        action: data.action,
-                    };
-                    if (this.handleGroups()) {
-                        if (typeof data.groups === 'string') {
-                            this.setGroups(data.groups);
-                        }
-                        else if (data.groups === false) {
-                            this.resetGroups();
-                        }
-                        message.groups = this.getGroups();
-                        if (data.keepFocus && data.keepFocus === true) {
-                            // get first goup of the list
-                            this.keepFocus = true;
-                        }
-                    }
-                    if (data.action === HtmlActions.define) {
-                        message.action = this.defineTrapFocus();
-                    }
-                    else if (data.action === HtmlActions.remove) {
-                        message.action = this.removeTrapFocus();
-                    }
-                    else {
-                        throw new Error('TrapFocus: action not supported');
-                    }
-                    this.ea.publish(TrapFocusChannels.ended, message);
-                }
-            };
-            this.defineTrapFocus = () => {
-                this.initFocusableElementsList();
-                // focusable elements list is ready
-                if (this.handleGroups()) {
-                    if (this.keepFocus) {
-                        if (this.lastFocusedElement) {
-                            const previousFocusedElementIndex = this.getFocusableElementIndex(this.lastFocusedElement);
-                            if (previousFocusedElementIndex !== -1) {
-                                this.currentFocusedIndex = previousFocusedElementIndex;
-                            }
-                        }
-                        this.keepFocus = false;
-                    }
+                    } while (currentFocusedIndex !== this.currentFocusedIndex);
                 }
                 this.focusElementByIndex(this.currentFocusedIndex);
-                return this.enabled ? HtmlActions.define : HtmlActions.remove;
-            };
-            this.removeTrapFocus = () => {
-                this.enabled = false;
-                this.focusableElements = [];
-                this.currentFocusedIndex = 0;
-                this.resetGroups();
-                return HtmlActions.remove;
-            };
-            this.logger = logger.scopeTo('TrapFocus');
-            this.logger.trace('constructor');
-            this.keysMonitored = this.options.get('keysMonitored');
-            this.focusDelay = this.options.get('focusDelay');
-            this.focusableElementsQuerySelector = this.options.get('focusableElementsQuerySelector');
+            }
+            else if (this.keysMonitored.includes(event.key)) {
+                this.logger.trace('onKeyDown: handle Escape key');
+                event.preventDefault();
+                this.untrapFocus()
+                    .then((data) => {
+                    const trapElement = data[0];
+                    const rollbackFocusElement = data[1];
+                    // send message to let dev focus elsewhere if needed
+                    const message = {
+                        escape: true,
+                        trapElement,
+                        rollbackFocusElement,
+                    };
+                    this.ea.publish(AriaService.trapFocusChannel, message);
+                });
+            }
+        };
+        this.elementsInitialConfig = new Map();
+        this.logger.trace('constructor');
+    }
+    /**
+     * trapFocus keep the focus inside the trapElement
+     * @param trapElement the element where to trap the focus
+     * @param rollbackFocusElement the element to focus back when the trap is removed
+     */
+    trapFocus(trapElement, rollbackFocusElement = undefined) {
+        this.logger.trace('trapFocus');
+        if (this.trapElement) {
+            this.logger.warn('trap: already set');
+            this.untrapFocus();
         }
-        attached() {
-            this.logger.trace('attached');
-            this.disposable = this.ea.subscribe(TrapFocusChannels.main, this.onTrapFocus);
-            this.initAvailableGroups();
-            this.element.addEventListener('keydown', this.onKeyDown);
-            this.element.addEventListener('focusin', this.onFocusIn);
-        }
-        detached() {
-            this.logger.trace('detached');
-            this.element.removeEventListener('keydown', this.onKeyDown);
-            this.element.removeEventListener('focusin', this.onFocusIn);
-            this.removeTrapFocus();
-        }
-        dispose() {
-            this.logger.trace('dispose');
-            this.disposable.dispose();
-        }
-        initFocusableElementsList() {
-            this.logger.trace('initFocusableElementsList');
+        this.trapElement = trapElement;
+        this.focusableElements = [];
+        this.focusableElementsConfig = new Map();
+        this.currentFocusedIndex = 0;
+        this.rollbackFocusElement = rollbackFocusElement;
+        this.trapElement.querySelectorAll(this.focusableElementsQuerySelector)
+            .forEach((focusableElement) => {
+            const isDisabled = focusableElement.hasAttribute('disabled');
+            const isAriaHidden = (focusableElement.getAttribute('aria-hidden') === 'true');
+            if (isDisabled === false && isAriaHidden === false) {
+                this.focusableElementsConfig.set(focusableElement, {
+                    tabIndex: focusableElement.tabIndex,
+                    // ariaHidden: focusableElement.getAttribute('aria-hidden'),
+                    // disabled: focusableElement.getAttribute('disabled'),
+                });
+                this.setTabindex(focusableElement);
+                // focusableElement.removeAttribute('tabindex');
+                this.focusableElements.push(focusableElement);
+            }
+        });
+        this.focusElementByIndex(this.currentFocusedIndex);
+        this.trapElement.addEventListener('keydown', this.onKeyDown);
+        this.trapElement.addEventListener('focusin', this.onFocusIn);
+        return Promise.resolve(this.trapElement);
+    }
+    /**
+     * untrapFocus remove the focus trap
+     *
+     */
+    untrapFocus() {
+        this.logger.trace('untrapFocus');
+        if (this.trapElement) {
+            this.focusableElements.forEach((focusableElement) => {
+                this.revertTabindex(focusableElement);
+            });
+            this.trapElement.removeEventListener('keydown', this.onKeyDown);
+            this.trapElement.removeEventListener('focusin', this.onFocusIn);
+            const trappedElement = this.trapElement;
+            const rollbackFocusElement = this.rollbackFocusElement;
+            this.trapElement = undefined;
+            this.rollbackFocusElement = undefined;
             this.focusableElements = [];
+            this.focusableElementsConfig = new Map();
             this.currentFocusedIndex = 0;
-            const focusableElements = this.element.querySelectorAll(this.focusableElementsQuerySelector);
-            focusableElements.forEach((element) => {
-                const isDisabled = element.hasAttribute('disabled');
-                const isAriaHidden = (element.getAttribute('aria-hidden') === 'true');
-                let isInGroups = true;
-                if (this.handleGroups()) {
-                    const elementGroups = element.getAttribute(TrapFocus.attributeGroup);
-                    isInGroups = false;
-                    if (elementGroups) {
-                        if (this.hasGroups(elementGroups)) {
-                            isInGroups = true;
-                        }
+            return new Promise((resolve) => {
+                this.platform.requestAnimationFrame(() => {
+                    if (rollbackFocusElement) {
+                        rollbackFocusElement.focus();
                     }
-                }
-                if (isDisabled === false && isAriaHidden === false && isInGroups === true) {
-                    this.focusableElements.push(element);
-                }
+                    resolve([trappedElement, rollbackFocusElement]);
+                });
             });
         }
-        focusElementByIndex(elementIndex) {
-            if (elementIndex >= 0 && elementIndex < this.focusableElements.length) {
-                this.enabled = true;
-                this.platform.taskQueue.queueTask(() => {
-                    this.platform.requestAnimationFrame(() => {
-                        this.logger.trace('focusElementByIndex', elementIndex);
-                        this.focusableElements[elementIndex].focus();
-                    });
-                }, { delay: this.focusDelay });
-            }
+    }
+    checkElementAvailable(element) {
+        if (element.getAttribute('aria-hidden') !== 'true'
+            && element.getAttribute('tabindex') !== '-1'
+            && element.getAttribute('aria-disabled') !== 'true'
+            && element.getAttribute('aria-hidden') !== 'true'
+            && element.getAttribute('disabled') !== 'true'
+            && element.checkVisibility() !== false) {
+            return true;
         }
-        getFocusableElementIndex(element) {
-            return this.focusableElements.indexOf(element);
+        return false;
+    }
+    focusElementByIndex(elementIndex) {
+        if (elementIndex >= 0 && elementIndex < this.focusableElements.length) {
+            this.platform.requestAnimationFrame(() => {
+                this.focusableElements[elementIndex].focus();
+            });
         }
-        extractGroups(groups) {
-            return groups.split(/\s+/);
+    }
+    /**
+     * @param element HTMLElement where to set aria-checked if it's a string send an event to let element change it's own aria-checked
+     * @param checked aria-checked value if undefined aria-checked will be removed
+     * @param role role value if not set it will be untouched should be set to 'checkbox' or 'menuitemcheckbox' or 'menuitemradio' or 'radio'
+     */
+    setChecked(element, checked = undefined, role = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-checked',
+                checked,
+                role,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
         }
-        getGroups() {
-            if (this.currentGroups.length === 0) {
-                return false;
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (checked !== undefined) {
+                element.ariaChecked = checked;
+                if (role) {
+                    element.role = role;
+                }
             }
             else {
-                return this.currentGroups.join(' ');
+                element.removeAttribute('aria-checked');
             }
         }
-        setGroups(groupsString) {
-            if (this.handleGroups()) {
-                this.logger.trace('setGroups', groupsString);
-                this.currentGroups = [];
-                const groups = this.extractGroups(groupsString);
-                groups.forEach((group) => {
-                    if (this.currentGroups.includes(group) === false) {
-                        this.currentGroups.push(group);
-                    }
-                });
+    }
+    /**
+     * @param element HTMLElement where to set aria-checked to original value if it's a string send an event to let element change it's own aria-checked
+     */
+    revertChecked(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-checked',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaChecked = this.getConfig(element, 'aria-checked');
+            if (ariaChecked) {
+                element.ariaChecked = ariaChecked;
+            }
+            else {
+                element.removeAttribute('aria-checked');
+            }
+            const role = this.getConfig(element, 'role');
+            if (role) {
+                element.role = role;
+            }
+            else {
+                element.removeAttribute('role');
             }
         }
-        hasGroups(groupsString) {
-            if (this.handleGroups()) {
-                if (this.currentGroups.length === 0) {
-                    return true;
+    }
+    /**
+     * @param element HTMLElement where to set aria-controls if it's a string send an event to let element change it's own aria-controls
+     * @param controls aria-controls value
+     * @param role
+     */
+    setControls(element, controls = undefined, role = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-controls',
+                controls,
+                role,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (controls) {
+                element.setAttribute('aria-controls', controls);
+                if (role) {
+                    element.role = role;
                 }
-                const groups = this.extractGroups(groupsString);
-                let hasGroups = false;
-                groups.forEach((group) => {
-                    if (this.currentGroups.includes(group) === true) {
-                        hasGroups = true;
-                    }
-                });
-                return hasGroups;
             }
-            return false;
-        }
-        resetGroups() {
-            if (this.handleGroups()) {
-                this.currentGroups = [];
+            else {
+                element.removeAttribute('aria-controls');
             }
         }
-        initAvailableGroups() {
-            const focusableElements = this.element.querySelectorAll(this.focusableElementsQuerySelector);
-            focusableElements.forEach((element) => {
-                const groupsString = element.getAttribute(TrapFocus.attributeGroup);
-                if (groupsString) {
-                    const groups = this.extractGroups(groupsString);
-                    groups.forEach((group) => {
-                        if (this.availableGroups.includes(group) === false) {
-                            this.availableGroups.push(group);
-                        }
-                    });
+    }
+    revertControls(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-controls',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaControls = this.getConfig(element, 'aria-controls');
+            if (ariaControls) {
+                element.setAttribute('aria-controls', ariaControls);
+            }
+            else {
+                element.removeAttribute('aria-controls');
+            }
+            const role = this.getConfig(element, 'role');
+            if (role) {
+                element.role = role;
+            }
+            else {
+                element.removeAttribute('role');
+            }
+        }
+    }
+    setCurrent(element, current = undefined, role = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-current',
+                current,
+                role,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (current) {
+                element.ariaCurrent = current;
+                if (role) {
+                    element.role = role;
                 }
+            }
+            else {
+                element.removeAttribute('aria-current');
+            }
+        }
+    }
+    revertCurrent(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-current',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaCurrent = this.getConfig(element, 'aria-current');
+            if (ariaCurrent) {
+                element.ariaCurrent = ariaCurrent;
+            }
+            else {
+                element.removeAttribute('aria-current');
+            }
+            const role = this.getConfig(element, 'role');
+            if (role) {
+                element.role = role;
+            }
+            else {
+                element.removeAttribute('role');
+            }
+        }
+    }
+    setDescribedBy(element, describedby = undefined, role = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-describedby',
+                describedby,
+                role,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (describedby) {
+                element.setAttribute('aria-describedby', describedby);
+                if (role) {
+                    element.role = role;
+                }
+            }
+        }
+    }
+    revertDescribedBy(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-describedby',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaDescribedBy = this.getConfig(element, 'aria-describedby');
+            if (ariaDescribedBy) {
+                element.setAttribute('aria-describedby', ariaDescribedBy);
+            }
+            else {
+                element.removeAttribute('aria-describedby');
+            }
+            const role = this.getConfig(element, 'role');
+            if (role) {
+                element.role = role;
+            }
+            else {
+                element.removeAttribute('role');
+            }
+        }
+    }
+    setDescription(element, description = undefined, role = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-description',
+                description,
+                role,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (description) {
+                element.ariaDescription = description;
+                if (role) {
+                    element.role = role;
+                }
+            }
+            else {
+                element.removeAttribute('aria-description');
+            }
+        }
+    }
+    revertDescription(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-description',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaDescription = this.getConfig(element, 'aria-description');
+            if (ariaDescription) {
+                element.ariaDescription = ariaDescription;
+            }
+            else {
+                element.removeAttribute('aria-description');
+            }
+            const role = this.getConfig(element, 'role');
+            if (role) {
+                element.role = role;
+            }
+            else {
+                element.removeAttribute('role');
+            }
+        }
+    }
+    setDetails(element, details = undefined, role = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-details',
+                details,
+                role,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (details) {
+                element.setAttribute('aria-details', details);
+                if (role) {
+                    element.role = role;
+                }
+            }
+            else {
+                element.removeAttribute('aria-details');
+            }
+        }
+    }
+    revertDetails(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-details',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaDetails = this.getConfig(element, 'aria-details');
+            if (ariaDetails) {
+                element.setAttribute('aria-details', ariaDetails);
+            }
+            else {
+                element.removeAttribute('aria-details');
+            }
+            const role = this.getConfig(element, 'role');
+            if (role) {
+                element.role = role;
+            }
+            else {
+                element.removeAttribute('role');
+            }
+        }
+    }
+    setDisabled(element, disabled = undefined, role = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-disabled',
+                disabled,
+                role,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (disabled) {
+                element.ariaDisabled = disabled;
+                if (role) {
+                    element.role = role;
+                }
+            }
+            else {
+                element.removeAttribute('aria-disabled');
+            }
+        }
+    }
+    revertDisabled(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-disabled',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaDisabled = this.getConfig(element, 'aria-disabled');
+            if (ariaDisabled) {
+                element.ariaDisabled = ariaDisabled;
+            }
+            else {
+                element.removeAttribute('aria-disabled');
+            }
+            const role = this.getConfig(element, 'role');
+            if (role) {
+                element.role = role;
+            }
+            else {
+                element.removeAttribute('role');
+            }
+        }
+    }
+    setExpanded(element, expanded = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-expanded',
+                expanded,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (expanded) {
+                element.ariaExpanded = expanded;
+            }
+            else {
+                element.removeAttribute('aria-expanded');
+            }
+        }
+    }
+    revertExpanded(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-expanded',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaExpanded = this.getConfig(element, 'aria-expanded');
+            if (ariaExpanded) {
+                element.ariaExpanded = ariaExpanded;
+            }
+            else {
+                element.removeAttribute('aria-expanded');
+            }
+        }
+    }
+    setLevel(element, level = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-level',
+                level,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (level) {
+                element.setAttribute('role', 'heading');
+                element.setAttribute('aria-level', level);
+            }
+            else {
+                element.removeAttribute('aria-level');
+                element.removeAttribute('role');
+            }
+        }
+    }
+    revertLevel(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-level',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaLevel = this.getConfig(element, 'aria-level');
+            if (ariaLevel) {
+                element.setAttribute('aria-level', ariaLevel);
+            }
+            else {
+                element.removeAttribute('aria-level');
+            }
+            const role = this.getConfig(element, 'role');
+            if (role) {
+                element.role = role;
+            }
+            else {
+                element.removeAttribute('role');
+            }
+        }
+    }
+    setHasPopup(element, haspopup = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-haspopup',
+                haspopup,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (haspopup) {
+                element.ariaHasPopup = haspopup;
+            }
+            else {
+                element.removeAttribute('aria-haspopup');
+            }
+        }
+    }
+    revertHasPopup(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-haspopup',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaHasPopup = this.getConfig(element, 'aria-haspopup');
+            if (ariaHasPopup) {
+                element.ariaHasPopup = ariaHasPopup;
+            }
+            else {
+                element.removeAttribute('aria-haspopup');
+            }
+        }
+    }
+    setHidden(element, hidden = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-hidden',
+                hidden,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (hidden) {
+                element.ariaHidden = hidden;
+            }
+            else {
+                element.removeAttribute('aria-hidden');
+            }
+        }
+    }
+    revertHidden(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-hidden',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaHidden = this.getConfig(element, 'aria-hidden');
+            if (ariaHidden) {
+                element.ariaHidden = ariaHidden;
+            }
+            else {
+                element.removeAttribute('aria-hidden');
+            }
+        }
+    }
+    setInvalid(element, invalid = 'false', role = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-invalid',
+                invalid,
+                role,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (invalid) {
+                element.ariaInvalid = invalid;
+                if (role) {
+                    element.role = role;
+                }
+            }
+            else {
+                element.removeAttribute('aria-invalid');
+            }
+        }
+    }
+    revertInvalid(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-invalid',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaInvalid = this.getConfig(element, 'aria-invalid');
+            if (ariaInvalid) {
+                element.ariaInvalid = ariaInvalid;
+            }
+            else {
+                element.removeAttribute('aria-invalid');
+            }
+            const role = this.getConfig(element, 'role');
+            if (role) {
+                element.role = role;
+            }
+            else {
+                element.removeAttribute('role');
+            }
+        }
+    }
+    setLabel(element, label = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-label',
+                label,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (label) {
+                element.ariaLabel = label;
+            }
+            else {
+                element.removeAttribute('aria-label');
+            }
+        }
+    }
+    revertLabel(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-label',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaLabel = this.getConfig(element, 'aria-label');
+            if (ariaLabel) {
+                element.ariaLabel = ariaLabel;
+            }
+            else {
+                element.removeAttribute('aria-label');
+            }
+        }
+    }
+    setLabelledBy(element, labelledby = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-labelledby',
+                labelledby,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (labelledby) {
+                element.setAttribute('aria-labelledby', labelledby);
+            }
+            else {
+                element.removeAttribute('aria-labelledby');
+            }
+        }
+    }
+    revertLabelledBy(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-labelledby',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaLabelledBy = this.getConfig(element, 'aria-labelledby');
+            if (ariaLabelledBy) {
+                element.setAttribute('aria-labelledby', ariaLabelledBy);
+            }
+            else {
+                element.removeAttribute('aria-labelledby');
+            }
+        }
+    }
+    setLive(element, live = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-live',
+                live,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (live) {
+                element.ariaLive = live;
+            }
+            else {
+                element.removeAttribute('aria-live');
+            }
+        }
+    }
+    revertLive(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-live',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaLive = this.getConfig(element, 'aria-live');
+            if (ariaLive) {
+                element.ariaLive = ariaLive;
+            }
+            else {
+                element.removeAttribute('aria-live');
+            }
+        }
+    }
+    setModal(element, modal = undefined ``, role = undefined, tabindex = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-modal',
+                modal,
+                role,
+                tabindex,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (modal) {
+                element.ariaModal = modal;
+                if (role) {
+                    element.role = role;
+                }
+                if (tabindex) {
+                    element.tabIndex = parseInt(tabindex);
+                }
+            }
+            else {
+                element.removeAttribute('aria-modal');
+            }
+        }
+    }
+    revertModal(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-modal',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaModal = this.getConfig(element, 'aria-modal');
+            if (ariaModal) {
+                element.ariaModal = ariaModal;
+            }
+            else {
+                element.removeAttribute('aria-modal');
+            }
+            const role = this.getConfig(element, 'role');
+            if (role) {
+                element.role = role;
+            }
+            else {
+                element.removeAttribute('role');
+            }
+            const tabindex = this.getConfig(element, 'tabindex');
+            if (tabindex) {
+                element.tabIndex = tabindex;
+            }
+            else {
+                element.removeAttribute('tabindex');
+            }
+        }
+    }
+    setPressed(element, pressed = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-pressed',
+                pressed,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (pressed) {
+                element.ariaPressed = pressed;
+            }
+            else {
+                element.removeAttribute('aria-pressed');
+            }
+        }
+    }
+    revertPressed(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-pressed',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaPressed = this.getConfig(element, 'aria-pressed');
+            if (ariaPressed) {
+                element.ariaPressed = ariaPressed;
+            }
+            else {
+                element.removeAttribute('aria-pressed');
+            }
+        }
+    }
+    setRequired(element, required = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-required',
+                required,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (required) {
+                element.ariaRequired = required;
+            }
+            else {
+                element.removeAttribute('aria-required');
+            }
+        }
+    }
+    revertRequired(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-required',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaRequired = this.getConfig(element, 'aria-required');
+            if (ariaRequired) {
+                element.ariaRequired = ariaRequired;
+            }
+            else {
+                element.removeAttribute('aria-required');
+            }
+        }
+    }
+    setRole(element, role = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'role',
+                role,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (role) {
+                element.role = role;
+            }
+            else {
+                element.removeAttribute('role');
+            }
+        }
+    }
+    revertRole(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'role',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const role = this.getConfig(element, 'role');
+            if (role) {
+                element.role = role;
+            }
+            else {
+                element.removeAttribute('role');
+            }
+        }
+    }
+    setSelected(element, selected = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-selected',
+                selected,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (selected) {
+                element.ariaSelected = selected;
+            }
+            else {
+                element.removeAttribute('aria-selected');
+            }
+        }
+    }
+    revertSelected(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-selected',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaSelected = this.getConfig(element, 'aria-selected');
+            if (ariaSelected) {
+                element.ariaSelected = ariaSelected;
+            }
+            else {
+                element.removeAttribute('aria-selected');
+            }
+        }
+    }
+    setSort(element, sort = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-sort',
+                sort,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (sort) {
+                element.ariaSort = sort;
+            }
+            else {
+                element.removeAttribute('aria-sort');
+            }
+        }
+    }
+    revertSort(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'aria-sort',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const ariaSort = this.getConfig(element, 'aria-sort');
+            if (ariaSort) {
+                element.ariaSort = ariaSort;
+            }
+            else {
+                element.removeAttribute('aria-sort');
+            }
+        }
+    }
+    setTabindex(element, tabindex = undefined) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'tabindex',
+                tabindex,
+            };
+            this.ea.publish(AriaService.ariaSetAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            this.storeConfig(element);
+            if (tabindex !== undefined) {
+                element.setAttribute('tabindex', tabindex);
+                // element.tabIndex = parseInt(tabindex);
+            }
+            else {
+                element.removeAttribute('tabindex');
+            }
+        }
+    }
+    revertTabindex(element) {
+        if (typeof element === 'string') {
+            const message = {
+                name: element,
+                attribute: 'tabindex',
+            };
+            this.ea.publish(AriaService.ariaRevertAttributeChannel, message);
+        }
+        else if (element instanceof HTMLElement) {
+            const tabindex = this.getConfig(element, 'tabindex');
+            if (tabindex !== undefined) {
+                element.setAttribute('tabindex', tabindex);
+                // element.tabIndex = parseInt(tabindex);
+            }
+            else {
+                element.removeAttribute('tabindex');
+            }
+        }
+    }
+    setByConfig(element, config) {
+        var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x, _y, _z, _0, _1, _2, _3, _4, _5, _6;
+        this.storeConfig(element);
+        switch (config.attribute) {
+            case 'aria-checked':
+                this.setChecked(element, (_a = config.checked) !== null && _a !== void 0 ? _a : undefined, (_b = config.role) !== null && _b !== void 0 ? _b : undefined);
+                break;
+            case 'aria-controls':
+                this.setControls(element, (_c = config.controls) !== null && _c !== void 0 ? _c : undefined, (_d = config.role) !== null && _d !== void 0 ? _d : undefined);
+                break;
+            case 'aria-current':
+                this.setCurrent(element, (_e = config.current) !== null && _e !== void 0 ? _e : undefined, (_f = config.role) !== null && _f !== void 0 ? _f : undefined);
+                break;
+            case 'aria-describedby':
+                this.setDescribedBy(element, (_g = config.describedby) !== null && _g !== void 0 ? _g : undefined, (_h = config.role) !== null && _h !== void 0 ? _h : undefined);
+                break;
+            case 'aria-description':
+                this.setDescription(element, (_j = config.description) !== null && _j !== void 0 ? _j : undefined, (_k = config.role) !== null && _k !== void 0 ? _k : undefined);
+                break;
+            case 'aria-details':
+                this.setDetails(element, (_l = config.details) !== null && _l !== void 0 ? _l : undefined, (_m = config.role) !== null && _m !== void 0 ? _m : undefined);
+                break;
+            case 'aria-disabled':
+                this.setDisabled(element, (_o = config.disabled) !== null && _o !== void 0 ? _o : undefined, (_p = config.role) !== null && _p !== void 0 ? _p : undefined);
+                break;
+            case 'aria-expanded':
+                this.setExpanded(element, (_q = config.expanded) !== null && _q !== void 0 ? _q : undefined);
+                break;
+            case 'aria-hidden':
+                this.setHidden(element, (_r = config.hidden) !== null && _r !== void 0 ? _r : undefined);
+                break;
+            case 'aria-invalid':
+                this.setInvalid(element, (_s = config.invalid) !== null && _s !== void 0 ? _s : undefined, (_t = config.role) !== null && _t !== void 0 ? _t : undefined);
+                break;
+            case 'aria-label':
+                this.setLabel(element, (_u = config.label) !== null && _u !== void 0 ? _u : undefined);
+                break;
+            case 'aria-labelledby':
+                this.setLabelledBy(element, (_v = config.labelledby) !== null && _v !== void 0 ? _v : undefined);
+                break;
+            case 'aria-level':
+                this.setLevel(element, (_w = config.level) !== null && _w !== void 0 ? _w : undefined);
+                break;
+            case 'aria-live':
+                this.setLive(element, (_x = config.live) !== null && _x !== void 0 ? _x : undefined);
+                break;
+            case 'aria-modal':
+                this.setModal(element, (_y = config.modal) !== null && _y !== void 0 ? _y : undefined, (_z = config.role) !== null && _z !== void 0 ? _z : undefined, (_0 = config.tabindex) !== null && _0 !== void 0 ? _0 : undefined);
+                break;
+            case 'aria-pressed':
+                this.setPressed(element, (_1 = config.pressed) !== null && _1 !== void 0 ? _1 : undefined);
+                break;
+            case 'aria-required':
+                this.setRequired(element, (_2 = config.required) !== null && _2 !== void 0 ? _2 : undefined);
+                break;
+            case 'role':
+                this.setRole(element, (_3 = config.role) !== null && _3 !== void 0 ? _3 : undefined);
+                break;
+            case 'aria-selected':
+                this.setSelected(element, (_4 = config.selected) !== null && _4 !== void 0 ? _4 : undefined);
+                break;
+            case 'aria-sort':
+                this.setSort(element, (_5 = config.sort) !== null && _5 !== void 0 ? _5 : undefined);
+                break;
+            case 'tabindex':
+                this.setTabindex(element, (_6 = config.tabindex) !== null && _6 !== void 0 ? _6 : undefined);
+                break;
+            default:
+                this.logger.warn('set: unknown attribute', config.attribute);
+                break;
+        }
+    }
+    revertByConfig(element, config) {
+        switch (config.attribute) {
+            case 'aria-checked':
+                this.revertChecked(element);
+                break;
+            case 'aria-controls':
+                this.revertControls(element);
+                break;
+            case 'aria-current':
+                this.revertCurrent(element);
+                break;
+            case 'aria-describedby':
+                this.revertDescribedBy(element);
+                break;
+            case 'aria-description':
+                this.revertDescription(element);
+                break;
+            case 'aria-details':
+                this.revertDetails(element);
+                break;
+            case 'aria-disabled':
+                this.revertDisabled(element);
+                break;
+            case 'aria-expanded':
+                this.revertExpanded(element);
+                break;
+            case 'aria-hidden':
+                this.revertHidden(element);
+                break;
+            case 'aria-invalid':
+                this.revertInvalid(element);
+                break;
+            case 'aria-label':
+                this.revertLabel(element);
+                break;
+            case 'aria-labelledby':
+                this.revertLabelledBy(element);
+                break;
+            case 'aria-level':
+                this.revertLevel(element);
+                break;
+            case 'aria-live':
+                this.revertLive(element);
+                break;
+            case 'aria-modal':
+                this.revertModal(element);
+                break;
+            case 'aria-pressed':
+                this.revertPressed(element);
+                break;
+            case 'aria-required':
+                this.revertRequired(element);
+                break;
+            case 'role':
+                this.revertRole(element);
+                break;
+            case 'aria-selected':
+                this.revertSelected(element);
+                break;
+            case 'aria-sort':
+                this.revertSort(element);
+                break;
+            case 'tabindex':
+                this.revertTabindex(element);
+                break;
+            default:
+                this.logger.warn('revert: unknown attribute', config.attribute);
+                break;
+        }
+    }
+    storeConfig(element) {
+        if (!this.elementsInitialConfig.has(element)) {
+            const initialAttributes = {};
+            Array.from(element.attributes)
+                .forEach(attribute => {
+                initialAttributes[attribute.name.toLowerCase()] = attribute.value;
             });
-            this.logger.trace('initAvailableGroups', this.availableGroups.join(' '));
+            this.elementsInitialConfig.set(element, initialAttributes);
         }
-        handleGroups() {
-            return this.availableGroups.length > 0;
+    }
+    getConfig(element, attribute) {
+        if (this.elementsInitialConfig.has(element)) {
+            const initialAttributes = this.elementsInitialConfig.get(element);
+            if (initialAttributes[attribute]) {
+                return initialAttributes[attribute];
+            }
         }
-    };
-    __setFunctionName(_classThis, "TrapFocus");
-    (() => {
-        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
-        _name_decorators = [bindable({ primary: true })];
-        _enabled_decorators = [bindable()];
-        __esDecorate(null, null, _name_decorators, { kind: "field", name: "name", static: false, private: false, access: { has: obj => "name" in obj, get: obj => obj.name, set: (obj, value) => { obj.name = value; } }, metadata: _metadata }, _name_initializers, _name_extraInitializers);
-        __esDecorate(null, null, _enabled_decorators, { kind: "field", name: "enabled", static: false, private: false, access: { has: obj => "enabled" in obj, get: obj => obj.enabled, set: (obj, value) => { obj.enabled = value; } }, metadata: _metadata }, _enabled_initializers, _enabled_extraInitializers);
-        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
-        TrapFocus = _classThis = _classDescriptor.value;
-        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
-    })();
-    _classThis.attributeGroup = 'trap-focus-group';
-    _classThis.attribute = 'trap-focus';
-    (() => {
-        __runInitializers(_classThis, _classExtraInitializers);
-    })();
-    return TrapFocus = _classThis;
-})();
+        return undefined;
+    }
+    restoreConfig(element) {
+        if (this.elementsInitialConfig.has(element)) {
+            Array.from(element.attributes)
+                .forEach(attribute => {
+                element.removeAttribute(attribute.name);
+            });
+            const initialAttributes = this.elementsInitialConfig.get(element);
+            Object.keys(initialAttributes)
+                .forEach(key => {
+                element.setAttribute(key, initialAttributes[key]);
+            });
+            this.elementsInitialConfig.delete(element);
+        }
+    }
+}
+AriaService.trapFocusChannel = 'ARIA_TRAP_FOCUS';
+AriaService.ariaSetAttributeChannel = 'ARIA_SET_ATTRIBUTE';
+AriaService.ariaRevertAttributeChannel = 'ARIA_REVERT_ATTRIBUTE';
 
-var InvalidFocusChannels;
-(function (InvalidFocusChannels) {
-    InvalidFocusChannels["main"] = "html:invalidfocus:main";
-    InvalidFocusChannels["ended"] = "html:invalidfocus:ended";
-})(InvalidFocusChannels || (InvalidFocusChannels = {}));
-
-let InvalidFocus = (() => {
-    let _classDecorators = [customAttribute("bc-invalid-focus")];
+let Aria = (() => {
+    let _classDecorators = [customAttribute('bc-aria')];
     let _classDescriptor;
     let _classExtraInitializers = [];
     let _classThis;
@@ -1640,177 +1386,50 @@ let InvalidFocus = (() => {
     let _name_initializers = [];
     let _name_extraInitializers = [];
     _classThis = class {
-        constructor(options = resolve(IAriaConfiguration), logger = resolve(ILogger), ea = resolve(IEventAggregator), platform = resolve(IPlatform), element = resolve(INode)) {
-            this.options = options;
+        constructor(logger = resolve(ILogger).scopeTo('Aria'), ariaService = resolve(IAriaService), ea = resolve(IEventAggregator), element = resolve(INode)) {
             this.logger = logger;
+            this.ariaService = ariaService;
             this.ea = ea;
-            this.platform = platform;
             this.element = element;
             this.name = __runInitializers(this, _name_initializers, void 0);
-            this.disposable = __runInitializers(this, _name_extraInitializers);
-            this.invalidElementsQuerySelector = '';
-            this.onInvalidFocus = (data) => {
-                if (data.name === this.name) {
-                    const message = {
-                        name: this.name,
-                        action: data.action,
-                    };
-                    this.platform.taskQueue.queueTask(() => {
-                        if (data.action === HtmlActions.define) {
-                            message.action = this.defineInvalidFocus();
-                        }
-                        else if (data.action === HtmlActions.remove) {
-                            message.action = this.removeInvalidFocus();
-                        }
-                        else {
-                            throw new Error('InvalidFocus: action not supported');
-                        }
-                        this.ea.publish(InvalidFocusChannels.ended, message);
-                    }, { delay: 100 });
+            this.disposableSet = __runInitializers(this, _name_extraInitializers);
+            this.onSetAria = (evt) => {
+                if (evt.name === this.name) {
+                    this.logger.debug('onSetAria', evt);
+                    this.ariaService.setByConfig(this.element, evt);
                 }
             };
-            this.logger = logger.scopeTo('InvalidFocus');
-            this.logger.trace('constructor');
-            this.invalidElementsQuerySelector = this.options.get('invalidElementsQuerySelector');
-            this.focusDelay = this.options.get('focusDelay');
+            this.onRevertAria = (evt) => {
+                if (evt.name === this.name) {
+                    this.logger.debug('onRevertAria', evt);
+                    this.ariaService.revertByConfig(this.element, evt);
+                }
+            };
+            this.logger.debug('constructor');
+        }
+        attaching() {
+            this.logger.trace('Attaching');
+            if (this.name.length > 0) {
+                this.disposableSet = this.ea.subscribe(AriaService.ariaSetAttributeChannel, this.onSetAria);
+                this.disposableUnset = this.ea.subscribe(AriaService.ariaRevertAttributeChannel, this.onRevertAria);
+            }
         }
         attached() {
-            this.logger.trace('attached');
-            this.disposable = this.ea.subscribe(InvalidFocusChannels.main, this.onInvalidFocus);
+            this.logger.trace('Attached');
         }
-        detached() {
-            this.logger.trace('detached');
-        }
-        dispose() {
-            this.logger.trace('dispose');
-            this.disposable.dispose();
-        }
-        removeInvalidFocus() {
-            const targetElement = this.element.querySelector(':focus');
-            if (targetElement !== null) {
-                this.platform.taskQueue.queueTask(() => {
-                    this.platform.requestAnimationFrame(() => {
-                        targetElement.blur();
-                    });
-                }, { delay: this.focusDelay });
+        detaching() {
+            this.logger.trace('Detaching');
+            if (this.name.length > 0) {
+                this.disposableSet.dispose();
+                this.disposableUnset.dispose();
             }
-            return HtmlActions.remove;
-        }
-        defineInvalidFocus() {
-            const targetElement = this.element.querySelector(this.invalidElementsQuerySelector);
-            if (targetElement !== null) {
-                this.platform.taskQueue.queueTask(() => {
-                    this.platform.requestAnimationFrame(() => {
-                        targetElement.focus();
-                    });
-                }, { delay: this.focusDelay });
-            }
-            return HtmlActions.define;
         }
     };
-    __setFunctionName(_classThis, "InvalidFocus");
+    __setFunctionName(_classThis, "Aria");
     (() => {
         const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
         _name_decorators = [bindable({ primary: true })];
         __esDecorate(null, null, _name_decorators, { kind: "field", name: "name", static: false, private: false, access: { has: obj => "name" in obj, get: obj => obj.name, set: (obj, value) => { obj.name = value; } }, metadata: _metadata }, _name_initializers, _name_extraInitializers);
-        __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
-        _classThis = _classDescriptor.value;
-        if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
-    })();
-    _classThis.attribute = 'invalid-focus';
-    (() => {
-        __runInitializers(_classThis, _classExtraInitializers);
-    })();
-    return _classThis;
-})();
-
-var RollbackFocusChannels;
-(function (RollbackFocusChannels) {
-    RollbackFocusChannels["main"] = "html:rollbackFocus:main";
-    RollbackFocusChannels["change"] = "html:rollbackFocus:change";
-    RollbackFocusChannels["ended"] = "html:rollbackFocus:ended";
-})(RollbackFocusChannels || (RollbackFocusChannels = {}));
-
-let RollbackFocus = (() => {
-    let _classDecorators = [customAttribute("bc-rollback-focus")];
-    let _classDescriptor;
-    let _classExtraInitializers = [];
-    let _classThis;
-    let _event_decorators;
-    let _event_initializers = [];
-    let _event_extraInitializers = [];
-    _classThis = class {
-        constructor(element = resolve(INode), logger = resolve(ILogger), ea = resolve(IEventAggregator)) {
-            this.element = element;
-            this.logger = logger;
-            this.ea = ea;
-            this.event = __runInitializers(this, _event_initializers, 'click');
-            this.subscriptionListenRollbackFocus = (__runInitializers(this, _event_extraInitializers), null);
-            this.subscriptionChangeRollbackFocus = null;
-            this.onEvent = (event) => {
-                this.logger.trace('onClick', event);
-                const message = {
-                    element: this.element,
-                };
-                this.ea.publish(RollbackFocusChannels.change, message);
-                this.subscriptionListenRollbackFocus = this.ea.subscribe(RollbackFocusChannels.main, this.onRollbackFocus);
-            };
-            this.onRollbackFocus = (data) => {
-                var _a;
-                this.logger.trace('onRollbackFocus', data);
-                // @ts-ignore
-                this.element.focus();
-                (_a = this.subscriptionListenRollbackFocus) === null || _a === void 0 ? void 0 : _a.dispose();
-                this.subscriptionListenRollbackFocus = null;
-                const message = {
-                    element: this.element,
-                };
-                this.ea.publish(RollbackFocusChannels.ended, message);
-            };
-            this.onRollbackFocusChangeCurrent = (data) => {
-                var _a;
-                this.logger.trace('onRollbackFocusChangeCurrent', data);
-                // if this element is not the current element, we dispose the subscription
-                if (data.element && data.element !== this.element) {
-                    this.logger.trace('onRollbackFocusCurrent Dispose', data);
-                    (_a = this.subscriptionListenRollbackFocus) === null || _a === void 0 ? void 0 : _a.dispose();
-                    this.subscriptionListenRollbackFocus = null;
-                }
-            };
-            this.logger = logger.scopeTo('RollbackFocus');
-            this.logger.trace('constructor');
-        }
-        attaching() {
-            this.logger.trace('attaching');
-            if (this.event === '') {
-                this.event = 'click';
-            }
-        }
-        attached() {
-            this.logger.trace('attached');
-            this.element.addEventListener(this.event, this.onEvent);
-            this.subscriptionChangeRollbackFocus = this.ea.subscribe(RollbackFocusChannels.change, this.onRollbackFocusChangeCurrent);
-        }
-        detached() {
-            var _a;
-            this.logger.trace('detached');
-            this.element.removeEventListener(this.event, this.onEvent);
-            (_a = this.subscriptionChangeRollbackFocus) === null || _a === void 0 ? void 0 : _a.dispose();
-        }
-        dispose() {
-            var _a, _b;
-            this.logger.trace('dispose');
-            (_a = this.subscriptionListenRollbackFocus) === null || _a === void 0 ? void 0 : _a.dispose();
-            this.subscriptionListenRollbackFocus = null;
-            (_b = this.subscriptionChangeRollbackFocus) === null || _b === void 0 ? void 0 : _b.dispose();
-            this.subscriptionChangeRollbackFocus = null;
-        }
-    };
-    __setFunctionName(_classThis, "RollbackFocus");
-    (() => {
-        const _metadata = typeof Symbol === "function" && Symbol.metadata ? Object.create(null) : void 0;
-        _event_decorators = [bindable({ primary: true })];
-        __esDecorate(null, null, _event_decorators, { kind: "field", name: "event", static: false, private: false, access: { has: obj => "event" in obj, get: obj => obj.event, set: (obj, value) => { obj.event = value; } }, metadata: _metadata }, _event_initializers, _event_extraInitializers);
         __esDecorate(null, _classDescriptor = { value: _classThis }, _classDecorators, { kind: "class", name: _classThis.name, metadata: _metadata }, null, _classExtraInitializers);
         _classThis = _classDescriptor.value;
         if (_metadata) Object.defineProperty(_classThis, Symbol.metadata, { enumerable: true, configurable: true, writable: true, value: _metadata });
@@ -1820,19 +1439,7 @@ let RollbackFocus = (() => {
 })();
 
 const DefaultComponents = [
-    AriaCurrent,
-    AriaExpanded,
-    AriaHidden,
-    AriaInvalid,
-    AriaLabel,
-    AriaLive,
-    AriaModal,
-    AriaSelected,
-    Focus,
-    Tabindex,
-    TrapFocus,
-    InvalidFocus,
-    RollbackFocus,
+    Aria,
 ];
 function createAriaConfiguration(options) {
     return {
@@ -1849,5 +1456,5 @@ function createAriaConfiguration(options) {
 }
 const AriaConfiguration = createAriaConfiguration({});
 
-export { AriaConfiguration, AriaCurrent, AriaExpanded, AriaHidden, AriaInvalid, AriaLabel, AriaLive, AriaModal, AriaSelected, CurrentChannels, CurrentModes, ExpandedChannels, ExpandedModes, Focus, FocusChannels, HiddenChannels, HiddenModes, HtmlActions, IAriaConfiguration, InvalidChannels, InvalidFocus, InvalidFocusChannels, InvalidModes, LabelChannels, LiveChannels, LiveModes, ModalChannels, ModalModes, ModalRoles, RollbackFocus, RollbackFocusChannels, SelectedChannels, SelectedModes, Tabindex, TabindexChannels, TrapFocus, TrapFocusChannels };
+export { AriaConfiguration, IAriaConfiguration };
 //# sourceMappingURL=index.es.js.map

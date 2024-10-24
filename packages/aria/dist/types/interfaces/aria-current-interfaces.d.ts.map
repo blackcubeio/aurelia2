@@ -1,1 +1,0 @@
-{"version":3,"file":"aria-current-interfaces.d.ts","sourceRoot":"","sources":["../../../src/interfaces/aria-current-interfaces.ts"],"names":[],"mappings":"AAAA,OAAO,EAAC,YAAY,EAAC,MAAM,6BAA6B,CAAC;AACzD,OAAO,EAAC,YAAY,EAAE,UAAU,EAAC,MAAM,mBAAmB,CAAC;AAE3D,MAAM,WAAW,YAAa,SAAQ,YAAY;IAC9C,IAAI,EAAE,YAAY,CAAC;CACtB;AACD,MAAM,WAAW,iBAAkB,SAAQ,UAAU;IACjD,IAAI,EAAE,YAAY,CAAC;CACtB"}

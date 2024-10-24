@@ -17,5 +17,5 @@ export default {
             format: 'es'
         }
     ],
-    external: ['aurelia', '@aurelia/fetch-client']
+    external: ['aurelia', '@aurelia/fetch-client', '@aurelia/router', '@aurelia/validation']
 };

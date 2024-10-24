@@ -1,8 +1,4 @@
 export interface IAriaConfig {
-    focusableElementsQuerySelector?: string;
-    invalidElementsQuerySelector?: string;
-    keysMonitored?: string[];
-    focusDelay?: number;
 }
 export interface IAriaConfiguration extends AriaConfigure {
 }

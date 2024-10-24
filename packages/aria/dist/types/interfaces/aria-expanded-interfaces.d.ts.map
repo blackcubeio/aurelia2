@@ -1,1 +1,0 @@
-{"version":3,"file":"aria-expanded-interfaces.d.ts","sourceRoot":"","sources":["../../../src/interfaces/aria-expanded-interfaces.ts"],"names":[],"mappings":"AACA,OAAO,EAAC,aAAa,EAAC,MAAM,8BAA8B,CAAC;AAC3D,OAAO,EAAC,YAAY,EAAE,UAAU,EAAC,MAAM,mBAAmB,CAAC;AAE3D,MAAM,WAAW,aAAc,SAAQ,YAAY;IAC/C,IAAI,EAAE,aAAa,CAAA;CACtB;AACD,MAAM,WAAW,kBAAmB,SAAQ,UAAU;IAClD,IAAI,EAAE,aAAa,CAAA;CACtB"}

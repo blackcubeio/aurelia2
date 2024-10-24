@@ -1,1 +1,0 @@
-{"version":3,"file":"aria-hidden-interfaces.d.ts","sourceRoot":"","sources":["../../../src/interfaces/aria-hidden-interfaces.ts"],"names":[],"mappings":"AACA,OAAO,EAAC,WAAW,EAAC,MAAM,4BAA4B,CAAC;AACvD,OAAO,EAAC,YAAY,EAAE,UAAU,EAAC,MAAM,mBAAmB,CAAC;AAE3D,MAAM,WAAW,WAAY,SAAQ,YAAY;IAC7C,IAAI,EAAE,WAAW,CAAA;CACpB;AACD,MAAM,WAAW,gBAAiB,SAAQ,UAAU;IAChD,IAAI,EAAE,WAAW,CAAA;CACpB"}

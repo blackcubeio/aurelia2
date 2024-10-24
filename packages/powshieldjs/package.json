@@ -1,6 +1,6 @@
 {
   "name": "@blackcube/vanilla-powshield",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "Blackcube VanillaJS Powshield",
   "repository": "https://github.com/blackcubeio/blackcube-aurelia2",
   "author": "Gaultier Philippe <pgaultier@gmail.com>",
@@ -19,7 +19,7 @@
   "devDependencies": {
     "@rollup/plugin-typescript": "^11.1.6",
     "rimraf": "^5.0.7",
-    "rollup": "^4.18.0",
+    "rollup": "^4.24.0",
     "tslib": "^2.6.3"
   }
 }
