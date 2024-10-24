@@ -1,13 +1,17 @@
 import { IContainer, IRegistry } from 'aurelia';
 import {IAriaConfig, IAriaConfiguration} from './configure';
 import {IAriaSet, IAriaRevert, IAriaTrapFocus} from './interfaces/aria';
+import {IAriaService, AriaService} from './services/aria-service';
 import {Aria} from './attributes';
 export {
     IAriaConfig,
     IAriaConfiguration,
     IAriaSet,
     IAriaRevert,
-    IAriaTrapFocus
+    IAriaTrapFocus,
+    IAriaService,
+    AriaService
+
 };
 const DefaultComponents: IRegistry[] = [
     Aria as unknown as IRegistry,

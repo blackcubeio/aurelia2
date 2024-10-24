@@ -1,6 +1,6 @@
 {
   "name": "@blackcube/aurelia2-tailwind",
-  "version": "2.2.0",
+  "version": "2.2.2",
   "repository": "https://github.com/blackcubeio/blackcube-aurelia2",
   "author": "Gaultier Philippe <pgaultier@gmail.com>",
   "license": "BSD-3-Clause",
@@ -14,7 +14,9 @@
     "clean": "rimraf dist && rimraf .rollup.cache"
   },
   "dependencies": {
-    "aurelia": "latest"
+    "aurelia": "latest",
+    "@blackcube/aurelia2-aria": "latest",
+    "@blackcube/aurelia2-transition": "latest"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^11.1.6",

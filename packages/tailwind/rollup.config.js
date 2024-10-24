@@ -17,5 +17,5 @@ export default {
             format: 'es'
         }
     ],
-    external: ['aurelia']
+    external: ['aurelia', '@blackcube/aurelia2-aria', '@blackcube/aurelia2-transition']
 };

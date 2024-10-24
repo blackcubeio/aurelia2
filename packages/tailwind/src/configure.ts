@@ -1,26 +1,26 @@
 import { DI } from "aurelia";
-export interface ConfigInterface {
+export interface ITailwindConfig {
 }
 
 export interface ITailwindConfiguration extends Configure {}
 export const ITailwindConfiguration = DI.createInterface<ITailwindConfiguration>('ITailwindConfiguration', x => x.singleton(Configure));
 
 export class Configure {
-    protected _config: ConfigInterface;
+    protected _config: ITailwindConfig;
 
     constructor() {
         this._config = {
         };
     }
-    configure(incoming: ConfigInterface = {}) {
+    configure(incoming: ITailwindConfig = {}) {
         Object.assign(this._config, incoming);
         return this;
     }
-    getOptions(): ConfigInterface {
+    getOptions(): ITailwindConfig {
         return this._config;
     }
 
-    options(obj: ConfigInterface) {
+    options(obj: ITailwindConfig) {
         Object.assign(this._config, obj);
     }
 

@@ -1,6 +1,6 @@
 {
   "name": "@blackcube/aurelia2-plugins",
-  "version": "2.1.1",
+  "version": "2.2.2",
   "description": "Blackcube Aurelia 2 plugins monorepo",
   "repository": "https://github.com/blackcubeio/blackcube-aurelia2",
   "author": "Gaultier Philippe <pgaultier@gmail.com>",
@@ -16,8 +16,11 @@
   ],
   "devDependencies": {
     "@aurelia/fetch-client": "latest",
+    "@aurelia/runtime-html ": "latest",
     "@aurelia/router": "latest",
     "@aurelia/validation": "latest",
+    "@blackcube/aurelia2-aria": "latest",
+    "@blackcube/aurelia2-transition": "latest",
     "@rollup/plugin-typescript": "^11.1.6",
     "aurelia": "latest",
     "rimraf": "^5.0.7",

@@ -1,0 +1,1 @@
+{"version":3,"file":"aria-label-interfaces.d.ts","sourceRoot":"","sources":["../../../src/interfaces/aria-label-interfaces.ts"],"names":[],"mappings":"AACA,OAAO,EAAC,YAAY,EAAE,UAAU,EAAC,MAAM,mBAAmB,CAAC;AAE3D,MAAM,WAAW,UAAW,SAAQ,YAAY;IAC5C,KAAK,CAAC,EAAE,MAAM,CAAC;CAClB;AACD,MAAM,WAAW,eAAgB,SAAQ,UAAU;IAC/C,KAAK,CAAC,EAAE,MAAM,CAAC;CAClB"}

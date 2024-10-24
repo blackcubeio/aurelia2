@@ -1,0 +1,25 @@
+{
+  "name": "@blackcube/aurelia2-svgsprites",
+  "version": "2.2.2",
+  "repository": "https://github.com/blackcubeio/blackcube-aurelia2",
+  "author": "Gaultier Philippe <pgaultier@gmail.com>",
+  "license": "BSD-3-Clause",
+  "type": "module",
+  "module": "./dist/index.es.js",
+  "main": "./dist/index.js",
+  "types": "./dist/types/index.d.ts",
+  "scripts": {
+    "build": "rimraf dist && rollup -c && rimraf .rollup.cache",
+    "deploy": "npm publish --access public",
+    "clean": "rimraf dist && rimraf .rollup.cache"
+  },
+  "dependencies": {
+    "aurelia": "latest"
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^11.1.6",
+    "rimraf": "^5.0.7",
+    "rollup": "^4.24.0",
+    "tslib": "^2.6.3"
+  }
+}

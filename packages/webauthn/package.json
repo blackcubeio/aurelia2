@@ -1,6 +1,6 @@
 {
   "name": "@blackcube/aurelia2-webauthn",
-  "version": "2.2.0",
+  "version": "2.2.2",
   "description": "Blackcube Aurelia 2 Webauthn",
   "repository": "https://github.com/blackcubeio/blackcube-aurelia2",
   "author": "Gaultier Philippe <pgaultier@gmail.com>",
