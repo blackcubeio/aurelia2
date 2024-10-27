@@ -97,6 +97,8 @@ let MenuMobile = (() => {
             this.transitionService = transitionService;
             this.platform = platform;
             this.element = element;
+            // element searched using [data-menu-mobile="close"]
+            // default transition for the menu, can be overriden by data-transition-* attributes
             this.closeButtonTransition = {
                 from: 'opacity-0',
                 to: 'opacity-100',
@@ -104,6 +106,8 @@ let MenuMobile = (() => {
                 show: 'inherit',
                 hide: 'none'
             };
+            // element searched using [data-menu-mobile="overlay"]
+            // default transition for the menu, can be overriden by data-transition-* attributes
             this.overlayTransition = {
                 from: 'opacity-0',
                 to: 'opacity-100',
@@ -111,6 +115,8 @@ let MenuMobile = (() => {
                 show: 'inherit',
                 hide: 'none'
             };
+            // element searched using [data-menu-mobile="offcanvas"]
+            // default transition for the menu, can be overriden by data-transition-* attributes
             this.offcanvasTransition = {
                 from: '-translate-x-full',
                 to: 'translate-x-0',
@@ -155,6 +161,9 @@ let MenuMobile = (() => {
             this.closeButtonPanel = this.closeButton.parentElement;
             this.overlayPanel = this.element.querySelector('[data-menu-mobile="overlay"]');
             this.offcanvasPanel = this.element.querySelector('[data-menu-mobile="offcanvas"]');
+            if (!this.openButton || !this.closeButton || !this.closeButtonPanel || !this.overlayPanel || !this.offcanvasPanel) {
+                throw new Error('Missing required elements');
+            }
             const promises = [];
             promises.push(this.transitionService.leave(this.closeButtonPanel, this.closeButtonTransition, undefined, true));
             promises.push(this.transitionService.leave(this.overlayPanel, this.overlayTransition, undefined, true));
@@ -237,7 +246,9 @@ let MenuSidebar = (() => {
             this.ariaService = ariaService;
             this.platform = platform;
             this.element = element;
-            this.svgTransition = {
+            // element searched using [data-menu-sidebar="arrow"]
+            // default transition for the menu, can be overriden by data-transition-* attributes
+            this.arrowTransition = {
                 from: 'text-gray-400',
                 to: 'text-gray-500 rotate-90',
                 transition: 'transition-transform ease-in-out duration-150',
@@ -247,10 +258,10 @@ let MenuSidebar = (() => {
                 evt.stopPropagation();
                 const button = evt.target;
                 const menuName = button.dataset.menuSidebar;
-                const svg = button.querySelector('svg[data-menu-sidebar="arrow"]');
+                const arrow = button.querySelector('[data-menu-sidebar-arrow]');
                 const submenu = button.nextElementSibling;
                 if (submenu.classList.contains('hidden')) {
-                    this.transitionService.enter(svg, this.svgTransition);
+                    this.transitionService.enter(arrow, this.arrowTransition);
                     submenu.classList.remove('hidden');
                     this.ariaService.setExpanded(button, 'true');
                     this.ariaService.setHidden(submenu, 'false');
@@ -260,7 +271,7 @@ let MenuSidebar = (() => {
                     }
                 }
                 else {
-                    this.transitionService.leave(svg, this.svgTransition);
+                    this.transitionService.leave(arrow, this.arrowTransition);
                     submenu.classList.add('hidden');
                     this.ariaService.setExpanded(button, 'false');
                     this.ariaService.setHidden(submenu, 'true');
@@ -273,7 +284,10 @@ let MenuSidebar = (() => {
         }
         attaching() {
             this.logger.trace('Attaching');
-            this.buttons = this.element.querySelectorAll('button[type="button"]');
+            this.buttons = this.element.querySelectorAll('[data-menu-sidebar]');
+            if (this.buttons.length === 0) {
+                throw new Error('No buttons found');
+            }
             this.initSidebar();
         }
         attached() {
@@ -288,17 +302,17 @@ let MenuSidebar = (() => {
             this.buttons.forEach((button) => {
                 const menuName = button.dataset.menuSidebar;
                 if (menuName.length > 0) {
-                    const svg = button.querySelector('svg[data-menu-sidebar="arrow"]');
+                    const arrow = button.querySelector('[data-menu-sidebar-arrow]');
                     const submenu = button.nextElementSibling;
                     const state = this.sidebarService.getStatus(menuName);
                     if (state) {
-                        this.transitionService.enter(svg, this.svgTransition, true);
+                        this.transitionService.enter(arrow, this.arrowTransition, undefined, true);
                         this.ariaService.setExpanded(button, 'true');
                         this.ariaService.setHidden(submenu, 'false');
                         submenu.classList.remove('hidden');
                     }
                     else {
-                        this.transitionService.leave(svg, this.svgTransition, undefined, true);
+                        this.transitionService.leave(arrow, this.arrowTransition, undefined, true);
                         this.ariaService.setExpanded(button, 'false');
                         this.ariaService.setHidden(submenu, 'true');
                         submenu.classList.add('hidden');
@@ -332,6 +346,7 @@ let DropdownMenu = (() => {
             this.ea = ea;
             this.element = element;
             this.isClosed = true;
+            // default transition for the menu, can be overriden by data-transition-* attributes
             this.menuTransition = {
                 from: 'transform opacity-0 scale-95',
                 to: 'transform opacity-100 scale-100',
@@ -383,8 +398,11 @@ let DropdownMenu = (() => {
         }
         attaching() {
             this.logger.trace('Attaching');
-            this.button = this.element.querySelector('button');
-            this.menu = this.element.querySelector('div');
+            this.button = this.element.querySelector('[data-dropdown-menu="button"]');
+            this.menu = this.element.querySelector('[data-dropdown-menu="menu"]');
+            if (!this.button || !this.menu) {
+                throw new Error('Missing required elements');
+            }
             this.transitionService.leave(this.menu, this.menuTransition, undefined, true)
                 .then(() => {
                 this.isClosed = true;
@@ -401,7 +419,11 @@ let DropdownMenu = (() => {
         detaching() {
             this.logger.trace('Detaching');
             this.button.removeEventListener('click', this.onToggle);
-            this.disposable.dispose();
+        }
+        dispose() {
+            var _a;
+            this.logger.trace('Dispose');
+            (_a = this.disposable) === null || _a === void 0 ? void 0 : _a.dispose();
         }
     };
     __setFunctionName(_classThis, "DropdownMenu");
@@ -427,39 +449,47 @@ let FormDropdown = (() => {
             this.element = element;
             this.ea = ea;
             this.ariaService = ariaService;
+            this.isMultiple = false;
             this.onTrapFocusKeydown = (evt) => {
-                if (evt.escape && evt.trapElement === this.list) {
-                    this.list.classList.add('hidden');
-                    this.input.value = this.select.options[this.select.selectedIndex].text;
+                if (evt.escape && evt.trapElement === this.panel) {
+                    this.panel.classList.add('hidden');
+                    this.fillInput();
                 }
             };
             this.onKeyPress = (evt) => {
-                if (evt.key === 'Tab' && !this.list.classList.contains('hidden')) {
+                if (evt.key === 'Tab' && !this.panel.classList.contains('hidden')) {
                     evt.preventDefault();
                     evt.stopPropagation();
-                    this.ariaService.trapFocus(this.list, this.input);
+                    this.ariaService.trapFocus(this.panel, this.input);
                 }
-                else if (evt.key === 'Escape' && !this.list.classList.contains('hidden')) {
+                else if (evt.key === 'Escape' && !this.panel.classList.contains('hidden')) {
                     evt.preventDefault();
                     evt.stopPropagation();
-                    this.list.classList.add('hidden');
+                    this.panel.classList.add('hidden');
                     this.ariaService.untrapFocus();
-                    this.input.value = this.select.options[this.select.selectedIndex].text;
+                    this.fillInput();
                 }
             };
             this.onFocusOut = (evt) => {
                 this.logger.trace('Focus out');
             };
+            this.onFocusOutDropdown = (evt) => {
+                this.logger.trace('Focus out dropdown');
+                if (!this.element.contains(evt.relatedTarget)) {
+                    this.panel.classList.add('hidden');
+                    this.fillInput();
+                }
+            };
             this.onToggleList = (evt) => {
                 this.logger.trace('Toggle list');
-                if (this.list.classList.contains('hidden')) {
+                if (this.panel.classList.contains('hidden')) {
                     this.updateList(true);
-                    this.list.classList.remove('hidden');
-                    this.ariaService.trapFocus(this.list, this.input);
+                    this.panel.classList.remove('hidden');
+                    this.ariaService.trapFocus(this.panel, this.input);
                 }
                 else {
-                    this.input.value = this.select.options[this.select.selectedIndex].text;
-                    this.list.classList.add('hidden');
+                    this.fillInput();
+                    this.panel.classList.add('hidden');
                     this.ariaService.untrapFocus();
                 }
             };
@@ -469,27 +499,33 @@ let FormDropdown = (() => {
             };
             this.onInputChange = (evt) => {
                 this.logger.trace('Input changed');
-                this.updateList();
-                this.list.classList.remove('hidden');
+                this.updateList(false);
+                this.panel.classList.remove('hidden');
             };
             this.onSelectElement = (evt) => {
-                const button = evt.target.closest('button');
-                if (this.list.contains(button)) {
+                const button = evt.target.closest('[data-form-dropdown="option-button"]');
+                if (this.panel.contains(button)) {
                     evt.stopPropagation();
                     this.logger.trace('Element selected');
-                    const id = button.dataset['optionid'];
+                    const id = button.dataset.optionId;
                     Array.from(this.select.options).forEach((option) => {
-                        if (option.value === id) {
-                            this.select.value = id;
+                        if (option.value == id) {
+                            if (this.isMultiple) {
+                                option.selected = !option.selected;
+                            }
+                            else {
+                                option.selected = true;
+                            }
                         }
                     });
-                    const span = button.querySelector('span');
-                    this.input.value = span.textContent;
+                    this.fillInput();
                     this.select.dispatchEvent(new Event('change'));
-                    this.list.classList.add('hidden');
-                    this.ariaService.setExpanded(this.input, 'false');
-                    this.ariaService.untrapFocus();
-                    this.input.focus();
+                    if (this.isMultiple === false) {
+                        this.panel.classList.add('hidden');
+                        this.ariaService.setExpanded(this.input, 'false');
+                        this.ariaService.untrapFocus();
+                        this.input.focus();
+                    }
                 }
             };
             this.generatedId = 'listbox-' + Math.random().toString(36).substring(2, 7);
@@ -497,92 +533,136 @@ let FormDropdown = (() => {
         attaching() {
             this.logger.trace('Attaching');
             this.disposable = this.ea.subscribe(AriaService.trapFocusChannel, this.onTrapFocusKeydown);
-            this.button = this.element.querySelector('button');
-            this.input = this.element.querySelector('input');
-            this.input.id = this.generatedId;
-            this.ariaService.setExpanded(this.input, 'false');
-            this.ariaService.setHasPopup(this.input, 'listbox');
+            this.button = this.element.querySelector('[data-form-dropdown="button"]');
+            this.input = this.element.querySelector('[data-form-dropdown="input"]');
             this.label = this.element.querySelector('label');
-            this.label.htmlFor = this.generatedId;
             this.select = this.element.querySelector('select');
             const tpl = this.element.querySelector('template');
             this.optionTemplate = tpl.content.firstElementChild;
+            this.panel = this.element.querySelector('[data-form-dropdown="panel"]');
+            if (!this.panel || !this.button || !this.input || !this.select || !this.optionTemplate || !tpl || !this.label) {
+                throw new Error('Missing required elements');
+            }
+            this.isMultiple = this.select.multiple;
+            this.ariaService.setExpanded(this.input, 'false');
+            this.ariaService.setHasPopup(this.input, 'listbox');
+            this.input.id = this.generatedId;
+            this.label.htmlFor = this.generatedId;
             tpl === null || tpl === void 0 ? void 0 : tpl.remove();
-            this.list = this.element.querySelector('ul');
-            this.list.id = this.generatedId + '-list';
+            this.panel.id = this.generatedId + '-list';
             // this.list.classList.remove('hidden');
             this.initList();
-        }
-        initList() {
-            this.list.querySelectorAll('li').forEach((li) => {
-                li.remove();
-            });
-            Array.from(this.select.options)
-                .forEach((option) => {
-                const li = this.optionTemplate.cloneNode(true);
-                const button = li.querySelector('button');
-                this.ariaService.setRole(button, 'option');
-                button.dataset['optionid'] = option.value;
-                li.dataset['searchValue'] = option.text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-                const textElement = li.querySelector('[data-value]');
-                textElement.textContent = option.text;
-                const check = li.querySelector('[data-selected]');
-                check.dataset['selected'] = option.selected ? 'true' : 'false';
-                if (option.selected) {
-                    this.ariaService.setSelected(button, 'true');
-                    check.classList.remove('hidden');
-                    this.input.value = option.text;
-                }
-                else {
-                    this.ariaService.setSelected(button, 'false');
-                    check.classList.add('hidden');
-                }
-                this.list.appendChild(li);
-            });
-            this.logger.trace('List inited');
-        }
-        updateList(nofilter = false) {
-            const searchValue = this.input.value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-            Array.from(this.select.options)
-                .forEach((option) => {
-                const button = this.list.querySelector('button[data-optionid="' + option.value + '"]');
-                const li = button.closest('li');
-                const searchableValue = li.dataset['searchValue'].trim();
-                if ((nofilter === true) || (searchValue === '') || searchableValue.includes(searchValue)) {
-                    li.classList.remove('hidden');
-                }
-                else {
-                    li.classList.add('hidden');
-                }
-                const check = li.querySelector('[data-selected]');
-                check.dataset['selected'] = option.selected ? 'true' : 'false';
-                if (option.selected) {
-                    this.ariaService.setSelected(button, 'true');
-                    check.classList.remove('hidden');
-                }
-                else {
-                    this.ariaService.setSelected(button, 'false');
-                    check.classList.add('hidden');
-                }
-            });
         }
         attached() {
             this.logger.trace('Attached');
             this.select.addEventListener('change', this.onSelectChange);
-            this.list.addEventListener('click', this.onSelectElement);
+            this.panel.addEventListener('click', this.onSelectElement);
             this.input.addEventListener('input', this.onInputChange);
             this.button.addEventListener('click', this.onToggleList);
             this.input.addEventListener('focusout', this.onFocusOut);
             this.input.addEventListener('keydown', this.onKeyPress);
+            this.element.addEventListener('focusout', this.onFocusOutDropdown);
         }
         detaching() {
             this.logger.trace('Detached');
             this.select.removeEventListener('change', this.onSelectChange);
-            this.list.removeEventListener('click', this.onSelectElement);
+            this.panel.removeEventListener('click', this.onSelectElement);
             this.input.removeEventListener('input', this.onInputChange);
             this.button.removeEventListener('click', this.onToggleList);
             this.input.removeEventListener('focusout', this.onFocusOut);
             this.input.removeEventListener('keydown', this.onKeyPress);
+            this.element.removeEventListener('focusout', this.onFocusOutDropdown);
+        }
+        initList() {
+            this.panel.querySelectorAll('[data-form-dropdown="option"]').forEach((htmlOption) => {
+                htmlOption.remove();
+            });
+            Array.from(this.select.options)
+                .forEach((option) => {
+                const htmlTemplateOption = this.optionTemplate.cloneNode(true);
+                const button = htmlTemplateOption.querySelector('[data-form-dropdown="option-button"]');
+                this.ariaService.setRole(button, 'option');
+                button.dataset.optionId = option.value;
+                htmlTemplateOption.dataset['searchValue'] = option.text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                const textElement = htmlTemplateOption.querySelector('[data-value]');
+                textElement.textContent = option.text;
+                const check = htmlTemplateOption.querySelector('[data-selected]');
+                check.dataset['selected'] = option.selected ? 'true' : 'false';
+                if (option.selected) {
+                    this.ariaService.setSelected(button, 'true');
+                    check.classList.remove('hidden');
+                }
+                else {
+                    this.ariaService.setSelected(button, 'false');
+                    check.classList.add('hidden');
+                }
+                this.panel.appendChild(htmlTemplateOption);
+            });
+            this.fillInput();
+            this.logger.trace('List inited');
+        }
+        updateList(nofilter = undefined) {
+            if (nofilter === undefined) {
+                if (this.isMultiple) {
+                    nofilter = true;
+                }
+                else {
+                    nofilter = false;
+                }
+            }
+            const searchableValues = [];
+            const searchValue = this.input.value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+            if (this.isMultiple) {
+                searchValue.split(/\s*,\s*/).forEach((value) => {
+                    searchableValues.push(value);
+                });
+            }
+            else {
+                searchableValues.push(searchValue);
+            }
+            Array.from(this.select.options)
+                .forEach((option) => {
+                const button = this.panel.querySelector('[data-option-id="' + option.value + '"]');
+                const htmlOption = button.closest('[data-form-dropdown="option"]');
+                const text = option.text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+                let isFound = false;
+                searchableValues.forEach((searchableValue) => {
+                    if ((nofilter === true) || (searchableValue === '') || text.includes(searchableValue)) {
+                        isFound = true;
+                    }
+                });
+                if (isFound) {
+                    htmlOption.classList.remove('hidden');
+                }
+                else {
+                    htmlOption.classList.add('hidden');
+                }
+                const check = htmlOption.querySelector('[data-selected]');
+                check.dataset['selected'] = option.selected ? 'true' : 'false';
+                if (option.selected) {
+                    this.ariaService.setSelected(button, 'true');
+                    check.classList.remove('hidden');
+                }
+                else {
+                    this.ariaService.setSelected(button, 'false');
+                    check.classList.add('hidden');
+                }
+            });
+        }
+        fillInput() {
+            if (this.isMultiple) {
+                let selectedoptions = new Set();
+                Array.from(this.select.options)
+                    .forEach((option) => {
+                    if (option.selected) {
+                        selectedoptions.add(option.text);
+                    }
+                });
+                this.input.value = Array.from(selectedoptions).join(', ');
+            }
+            else {
+                this.input.value = this.select.options[this.select.selectedIndex].text || '';
+            }
         }
     };
     __setFunctionName(_classThis, "FormDropdown");

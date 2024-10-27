@@ -46,6 +46,25 @@ var TransitionStatus;
 })(TransitionStatus || (TransitionStatus = {}));
 
 const ITransitionService = DI.createInterface('ITransitionService', (x) => x.singleton(TransitionService));
+/**
+ * TransitionService use dataset attributes to handle transitions on an element
+ *      * data-transition-from : initial state of the element when entering / final state when leaving
+ *      * data-transition-to : final state of the element when entering / initial state when leaving
+ *      * data-transition-transition : transition to apply when entering / leaving (if data-transition-transition-leaving is not set)
+ *      * data-transition-transition-leaving : transition to apply when leaving
+ *      * data-transition-show : `display` value to apply before entering
+ *      * data-transition-hide : `display` value to apply after leaving
+ * example:
+ * <div bc-transition="myTransition"
+ *      data-transition-from="transform opacity-0 scale-95"
+ *      data-transition-to="transform opacity-100 scale-100"
+ *      data-transition-transition="transition ease-out duration-100"
+ *      data-transition-transition-leaving="transition ease-in duration-75"
+ *      data-transition-show="inherit"
+ *      data-transition-hide="none"
+ * >
+ * </div>
+ */
 class TransitionService {
     constructor(logger = resolve(ILogger).scopeTo('TransitionService'), platform = resolve(IPlatform), ea = resolve(IEventAggregator)) {
         this.logger = logger;
@@ -53,23 +72,31 @@ class TransitionService {
         this.ea = ea;
         this.logger.trace('Constructing');
     }
-    enter(element, transition, eventName = undefined, noTransition = false) {
+    enter(element, transition, eventName = undefined, noTransition = false, timeout = 500) {
+        if (!element) {
+            return Promise.reject('Element/Event not defined');
+        }
+        transition = this.rebuildTransition(element, transition);
         if (noTransition) {
             return this.enterWithoutTransition(element, transition, eventName);
         }
         else {
-            return this.enterWithTransition(element, transition, eventName);
+            return this.enterWithTransition(element, transition, eventName, timeout);
         }
     }
-    leave(element, transition, eventName = undefined, noTransition = false) {
+    leave(element, transition, eventName = undefined, noTransition = false, timeout = 500) {
+        if (!element) {
+            return Promise.reject('Element/Event not defined');
+        }
+        transition = this.rebuildTransition(element, transition);
         if (noTransition) {
             return this.leaveWithoutTransition(element, transition, eventName);
         }
         else {
-            return this.leaveWithTransition(element, transition, eventName);
+            return this.leaveWithTransition(element, transition, eventName, timeout);
         }
     }
-    enterWithTransition(element, transition, eventName = undefined) {
+    enterWithTransition(element, transition, eventName = undefined, timeout = 500) {
         if (eventName) {
             this.ea.publish(TransitionChannels.progress, {
                 name: eventName,
@@ -95,6 +122,7 @@ class TransitionService {
                 element.removeEventListener('transitionend', onTransitionEnterEnd);
                 element.removeEventListener('transitioncancel', onTransitionEnterEnd);
                 transition.transition.split(/\s+/)
+                    .filter((className) => className.length > 0)
                     .forEach((className) => element.classList.remove(className));
                 transitionFinished = true;
                 return Promise.resolve();
@@ -115,6 +143,7 @@ class TransitionService {
         })
             .then(() => {
             transition.transition.split(/\s+/)
+                .filter((className) => className.length > 0)
                 .forEach((className) => element.classList.add(className));
             return Promise.resolve();
         })
@@ -127,12 +156,13 @@ class TransitionService {
                 element.removeEventListener('transitionend', onTransitionEnterEnd);
                 element.removeEventListener('transitioncancel', onTransitionEnterEnd);
                 element.removeEventListener('transitionrun', onTransitionEnterRun);
-                transition.transition.split(/\s+/)
-                    .forEach((className) => element.classList.remove(className));
-            }, 250);
+                this.cleanupTransition(element, transition);
+            }, timeout);
             transition.from.split(/\s+/)
+                .filter((className) => className.length > 0)
                 .forEach((className) => element.classList.remove(className));
             transition.to.split(/\s+/)
+                .filter((className) => className.length > 0)
                 .forEach((className) => element.classList.add(className));
             return Promise.resolve();
         })
@@ -167,8 +197,10 @@ class TransitionService {
         return this.cleanupTransition(element, transition)
             .then(() => {
             transition.from.split(/\s+/)
+                .filter((className) => className.length > 0)
                 .forEach((className) => element.classList.remove(className));
             transition.to.split(/\s+/)
+                .filter((className) => className.length > 0)
                 .forEach((className) => element.classList.add(className));
             if (transition.show) {
                 element.style.display = transition.show;
@@ -186,7 +218,7 @@ class TransitionService {
             return this.waitAnimationFrame();
         });
     }
-    leaveWithTransition(element, transition, eventName = undefined) {
+    leaveWithTransition(element, transition, eventName = undefined, timeout = 500) {
         if (eventName) {
             this.ea.publish(TransitionChannels.progress, {
                 name: eventName,
@@ -211,9 +243,7 @@ class TransitionService {
                 evt.stopPropagation();
                 element.removeEventListener('transitionend', onTransitionLeaveEnd);
                 element.removeEventListener('transitioncancel', onTransitionLeaveEnd);
-                const t = transition.transitionLeaving || transition.transition;
-                t.split(/\s+/)
-                    .forEach((className) => element.classList.remove(className));
+                this.cleanupTransition(element, transition);
                 if (transition.hide) {
                     element.style.display = transition.hide;
                     // wait next frame
@@ -233,6 +263,7 @@ class TransitionService {
             .then(() => {
             const t = transition.transitionLeaving || transition.transition;
             t.split(/\s+/)
+                .filter((className) => className.length > 0)
                 .forEach((className) => element.classList.add(className));
             return Promise.resolve();
         })
@@ -245,13 +276,13 @@ class TransitionService {
                 element.removeEventListener('transitionend', onTransitionLeaveEnd);
                 element.removeEventListener('transitioncancel', onTransitionLeaveEnd);
                 element.removeEventListener('transitionrun', onTransitionLeaveRun);
-                const t = transition.transitionLeaving || transition.transition;
-                t.split(/\s+/)
-                    .forEach((className) => element.classList.add(className));
-            }, 250);
+                this.cleanupTransition(element, transition);
+            }, timeout);
             transition.to.split(/\s+/)
+                .filter((className) => className.length > 0)
                 .forEach((className) => element.classList.remove(className));
             transition.from.split(/\s+/)
+                .filter((className) => className.length > 0)
                 .forEach((className) => element.classList.add(className));
             return Promise.resolve();
         })
@@ -286,8 +317,10 @@ class TransitionService {
         return this.cleanupTransition(element, transition)
             .then(() => {
             transition.to.split(/\s+/)
+                .filter((className) => className.length > 0)
                 .forEach((className) => element.classList.remove(className));
             transition.from.split(/\s+/)
+                .filter((className) => className.length > 0)
                 .forEach((className) => element.classList.add(className));
             if (transition.hide) {
                 element.style.display = transition.hide;
@@ -306,11 +339,15 @@ class TransitionService {
         });
     }
     cleanupTransition(element, transition) {
-        transition.transition.split(/\s+/).forEach((className) => {
+        transition.transition.split(/\s+/)
+            .filter((className) => className.length > 0)
+            .forEach((className) => {
             element.classList.remove(className);
         });
         if (transition.transitionLeaving) {
-            transition.transitionLeaving.split(/\s+/).forEach((className) => {
+            transition.transitionLeaving.split(/\s+/)
+                .filter((className) => className.length > 0)
+                .forEach((className) => {
                 element.classList.remove(className);
             });
         }
@@ -322,6 +359,34 @@ class TransitionService {
                 resolve(void 0);
             });
         });
+    }
+    rebuildTransition(element, transition = undefined) {
+        let inlineTransition = undefined;
+        if (element.dataset.transitionFrom && element.dataset.transitionTo && element.dataset.transitionTransition) {
+            inlineTransition = {
+                from: element.dataset.transitionFrom || '',
+                to: element.dataset.transitionTo || '',
+                transition: element.dataset.transitionTransition || ''
+            };
+            if (element.dataset.transitionTransitionLeaving) {
+                inlineTransition.transitionLeaving = element.dataset.transitionTransitionLeaving;
+            }
+            if (element.dataset.transitionShow) {
+                inlineTransition.show = element.dataset.transitionShow;
+            }
+            if (element.dataset.transitionHide) {
+                inlineTransition.hide = element.dataset.transitionHide;
+            }
+        }
+        if (inlineTransition) {
+            return inlineTransition;
+        }
+        else if (transition) {
+            return transition;
+        }
+        else {
+            throw new Error('No transition defined');
+        }
     }
 }
 
@@ -419,10 +484,10 @@ let Transition = (() => {
                 if (data.name == this.name) {
                     this.logger.trace('onTransition');
                     if (data.mode === TransitionModes.enter) {
-                        this.transitionService.enter(this.element, this.transition, this.name);
+                        this.transitionService.enter(this.element, undefined, this.name);
                     }
                     else if (data.mode === TransitionModes.leave) {
-                        this.transitionService.leave(this.element, this.transition, this.name);
+                        this.transitionService.leave(this.element, undefined, this.name);
                     }
                 }
             };
@@ -431,14 +496,6 @@ let Transition = (() => {
         }
         attaching() {
             this.logger.trace('attaching');
-            this.transition = {
-                from: this.element.dataset.transitionFrom || '',
-                to: this.element.dataset.transitionTo || '',
-                transition: this.element.dataset.transitionTransition || '',
-                transitionLeaving: this.element.dataset.transitionTransitionLeaving || undefined,
-                show: this.element.dataset.transitionShow || undefined,
-                hide: this.element.dataset.transitionHide || undefined,
-            };
         }
         attached() {
             this.logger.trace('attached');

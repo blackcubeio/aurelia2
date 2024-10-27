@@ -10,7 +10,7 @@ export declare class MenuSidebar implements ICustomAttributeViewModel {
     private readonly platform;
     private readonly element;
     private buttons;
-    private svgTransition;
+    private arrowTransition;
     constructor(logger?: ILogger, transitionService?: ITransitionService, sidebarService?: ISidebarService, ariaService?: IAriaService, platform?: IPlatform, element?: HTMLElement);
     attaching(): void;
     attached(): void;

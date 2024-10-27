@@ -9,7 +9,6 @@ export declare class Transition implements ICustomAttributeViewModel {
     private readonly element;
     name: string;
     private disposable;
-    private transition;
     /**
      * Attribute used to handle transitions on an element runned when a message is received on the TransitionChannels.main channel
      * example:

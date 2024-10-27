@@ -10,22 +10,25 @@ export declare class FormDropdown implements ICustomAttributeViewModel {
     private label;
     private input;
     private select;
-    private list;
+    private panel;
     private optionTemplate;
     private generatedId;
     private disposable;
+    private isMultiple;
     constructor(logger?: ILogger, platform?: IPlatform, element?: HTMLElement, ea?: IEventAggregator, ariaService?: IAriaService);
     attaching(): void;
-    private initList;
-    private updateList;
     attached(): void;
     detaching(): void;
+    private initList;
+    private updateList;
     private onTrapFocusKeydown;
     private onKeyPress;
     private onFocusOut;
+    private onFocusOutDropdown;
     private onToggleList;
     private onSelectChange;
     private onInputChange;
     private onSelectElement;
+    private fillInput;
 }
 //# sourceMappingURL=form-dropdown.d.ts.map

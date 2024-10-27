@@ -17,6 +17,7 @@ export declare class DropdownMenu implements ICustomAttributeViewModel {
     attaching(): void;
     attached(): void;
     detaching(): void;
+    dispose(): void;
     private onTrapFocus;
     private onToggle;
     private onFocusOut;

@@ -20,7 +20,6 @@ export class Transition implements ICustomAttributeViewModel
     @bindable( {primary: true} ) name: string;
     private disposable:IDisposable;
 
-    private transition: ITransition;
 
     /**
      * Attribute used to handle transitions on an element runned when a message is received on the TransitionChannels.main channel
@@ -48,14 +47,6 @@ export class Transition implements ICustomAttributeViewModel
 
     public attaching() {
         this.logger.trace('attaching');
-        this.transition = {
-            from: this.element.dataset.transitionFrom || '',
-            to: this.element.dataset.transitionTo || '',
-            transition: this.element.dataset.transitionTransition || '',
-            transitionLeaving: this.element.dataset.transitionTransitionLeaving || undefined,
-            show: this.element.dataset.transitionShow || undefined,
-            hide: this.element.dataset.transitionHide || undefined,
-        }
     }
 
     public attached()
@@ -74,9 +65,9 @@ export class Transition implements ICustomAttributeViewModel
         if (data.name == this.name) {
             this.logger.trace('onTransition');
             if (data.mode === TransitionModes.enter) {
-                this.transitionService.enter(this.element, this.transition, this.name);
+                this.transitionService.enter(this.element, undefined, this.name);
             } else if (data.mode === TransitionModes.leave) {
-                this.transitionService.leave(this.element, this.transition, this.name);
+                this.transitionService.leave(this.element, undefined, this.name);
             }
         }
     }

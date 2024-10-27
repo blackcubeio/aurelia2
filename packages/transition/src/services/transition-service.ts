@@ -7,6 +7,25 @@ export const ITransitionService =
         x.singleton(TransitionService)
     );
 export interface ITransitionService extends TransitionService {}
+/**
+ * TransitionService use dataset attributes to handle transitions on an element
+ *      * data-transition-from : initial state of the element when entering / final state when leaving
+ *      * data-transition-to : final state of the element when entering / initial state when leaving
+ *      * data-transition-transition : transition to apply when entering / leaving (if data-transition-transition-leaving is not set)
+ *      * data-transition-transition-leaving : transition to apply when leaving
+ *      * data-transition-show : `display` value to apply before entering
+ *      * data-transition-hide : `display` value to apply after leaving
+ * example:
+ * <div bc-transition="myTransition"
+ *      data-transition-from="transform opacity-0 scale-95"
+ *      data-transition-to="transform opacity-100 scale-100"
+ *      data-transition-transition="transition ease-out duration-100"
+ *      data-transition-transition-leaving="transition ease-in duration-75"
+ *      data-transition-show="inherit"
+ *      data-transition-hide="none"
+ * >
+ * </div>
+ */
 class TransitionService
 {
     public constructor(
@@ -17,24 +36,32 @@ class TransitionService
         this.logger.trace('Constructing');
     }
 
-    public enter(element: HTMLElement|SVGElement, transition: ITransition, eventName = undefined, noTransition = false)
+    public enter(element: HTMLElement|SVGElement, transition: ITransition, eventName = undefined, noTransition = false, timeout = 500)
     {
+        if (!element) {
+            return Promise.reject('Element/Event not defined');
+        }
+        transition = this.rebuildTransition(element, transition);
         if (noTransition) {
             return this.enterWithoutTransition(element, transition, eventName);
         } else {
-            return this.enterWithTransition(element, transition, eventName);
+            return this.enterWithTransition(element, transition, eventName, timeout);
         }
     }
-    public leave(element: HTMLElement|SVGElement, transition: ITransition, eventName = undefined, noTransition = false)
+    public leave(element: HTMLElement|SVGElement, transition: ITransition, eventName = undefined, noTransition = false, timeout = 500)
     {
+        if (!element) {
+            return Promise.reject('Element/Event not defined');
+        }
+        transition = this.rebuildTransition(element, transition);
         if (noTransition) {
             return this.leaveWithoutTransition(element, transition, eventName);
         } else {
-            return this.leaveWithTransition(element, transition, eventName);
+            return this.leaveWithTransition(element, transition, eventName, timeout);
         }
     }
 
-    private enterWithTransition(element: HTMLElement|SVGElement, transition: ITransition, eventName = undefined)
+    private enterWithTransition(element: HTMLElement|SVGElement, transition: ITransition, eventName = undefined, timeout = 500)
     {
         if (eventName) {
             this.ea.publish(TransitionChannels.progress, {
@@ -61,6 +88,7 @@ class TransitionService
                 element.removeEventListener('transitionend', onTransitionEnterEnd);
                 element.removeEventListener('transitioncancel', onTransitionEnterEnd);
                 transition.transition.split(/\s+/)
+                    .filter((className) => className.length > 0)
                     .forEach((className) => element.classList.remove(className));
                 transitionFinished = true;
                 return Promise.resolve();
@@ -80,6 +108,7 @@ class TransitionService
             })
             .then(() => {
                 transition.transition.split(/\s+/)
+                    .filter((className) => className.length > 0)
                     .forEach((className) => element.classList.add(className));
                 return Promise.resolve();
             })
@@ -92,12 +121,13 @@ class TransitionService
                     element.removeEventListener('transitionend', onTransitionEnterEnd);
                     element.removeEventListener('transitioncancel', onTransitionEnterEnd);
                     element.removeEventListener('transitionrun', onTransitionEnterRun);
-                    transition.transition.split(/\s+/)
-                        .forEach((className) => element.classList.remove(className));
-                }, 250);
+                    this.cleanupTransition(element, transition);
+                }, timeout);
                 transition.from.split(/\s+/)
+                    .filter((className) => className.length > 0)
                     .forEach((className) => element.classList.remove(className));
                 transition.to.split(/\s+/)
+                    .filter((className) => className.length > 0)
                     .forEach((className) => element.classList.add(className));
                 return Promise.resolve();
             })
@@ -133,8 +163,10 @@ class TransitionService
         return this.cleanupTransition(element, transition)
             .then(() => {
                 transition.from.split(/\s+/)
+                    .filter((className) => className.length > 0)
                     .forEach((className) => element.classList.remove(className));
                 transition.to.split(/\s+/)
+                    .filter((className) => className.length > 0)
                     .forEach((className) => element.classList.add(className));
                 if (transition.show) {
                     element.style.display = transition.show;
@@ -154,7 +186,7 @@ class TransitionService
     }
 
 
-    private leaveWithTransition(element: HTMLElement|SVGElement, transition: ITransition, eventName = undefined)
+    private leaveWithTransition(element: HTMLElement|SVGElement, transition: ITransition, eventName = undefined, timeout = 500)
     {
         if (eventName) {
             this.ea.publish(TransitionChannels.progress, {
@@ -180,9 +212,7 @@ class TransitionService
                 evt.stopPropagation();
                 element.removeEventListener('transitionend', onTransitionLeaveEnd);
                 element.removeEventListener('transitioncancel', onTransitionLeaveEnd);
-                const t = transition.transitionLeaving || transition.transition;
-                t.split(/\s+/)
-                    .forEach((className) => element.classList.remove(className));
+                this.cleanupTransition(element, transition);
                 if (transition.hide) {
                     element.style.display = transition.hide;
                     // wait next frame
@@ -201,6 +231,7 @@ class TransitionService
             .then(() => {
                 const t = transition.transitionLeaving || transition.transition;
                 t.split(/\s+/)
+                    .filter((className) => className.length > 0)
                     .forEach((className) => element.classList.add(className));
                 return Promise.resolve();
             })
@@ -213,13 +244,13 @@ class TransitionService
                     element.removeEventListener('transitionend', onTransitionLeaveEnd);
                     element.removeEventListener('transitioncancel', onTransitionLeaveEnd);
                     element.removeEventListener('transitionrun', onTransitionLeaveRun);
-                    const t = transition.transitionLeaving || transition.transition;
-                    t.split(/\s+/)
-                        .forEach((className) => element.classList.add(className));
-                }, 250);
+                    this.cleanupTransition(element, transition);
+                }, timeout);
                 transition.to.split(/\s+/)
+                    .filter((className) => className.length > 0)
                     .forEach((className) => element.classList.remove(className));
                 transition.from.split(/\s+/)
+                    .filter((className) => className.length > 0)
                     .forEach((className) => element.classList.add(className));
                 return Promise.resolve();
             })
@@ -255,8 +286,10 @@ class TransitionService
         return this.cleanupTransition(element, transition)
             .then(() => {
                 transition.to.split(/\s+/)
+                    .filter((className) => className.length > 0)
                     .forEach((className) => element.classList.remove(className));
                 transition.from.split(/\s+/)
+                    .filter((className) => className.length > 0)
                     .forEach((className) => element.classList.add(className));
                 if (transition.hide) {
                     element.style.display = transition.hide;
@@ -277,11 +310,15 @@ class TransitionService
 
     private cleanupTransition(element: HTMLElement|SVGElement, transition: ITransition): Promise<void>
     {
-        transition.transition.split(/\s+/).forEach((className) => {
+        transition.transition.split(/\s+/)
+            .filter((className) => className.length > 0)
+            .forEach((className) => {
             element.classList.remove(className)
         });
         if (transition.transitionLeaving) {
-            transition.transitionLeaving.split(/\s+/).forEach((className) => {
+            transition.transitionLeaving.split(/\s+/)
+                .filter((className) => className.length > 0)
+                .forEach((className) => {
                 element.classList.remove(className)
             });
         }
@@ -295,6 +332,33 @@ class TransitionService
                 resolve(void 0);
             });
         });
+    }
+
+    private rebuildTransition(element: HTMLElement|SVGElement, transition: ITransition = undefined): ITransition {
+        let inlineTransition: ITransition = undefined;
+        if (element.dataset.transitionFrom && element.dataset.transitionTo && element.dataset.transitionTransition) {
+            inlineTransition = {
+                from: element.dataset.transitionFrom || '',
+                to: element.dataset.transitionTo || '',
+                transition: element.dataset.transitionTransition || ''
+            };
+            if (element.dataset.transitionTransitionLeaving) {
+                inlineTransition.transitionLeaving = element.dataset.transitionTransitionLeaving;
+            }
+            if (element.dataset.transitionShow) {
+                inlineTransition.show = element.dataset.transitionShow;
+            }
+            if (element.dataset.transitionHide) {
+                inlineTransition.hide = element.dataset.transitionHide;
+            }
+        }
+        if (inlineTransition) {
+            return inlineTransition;
+        } else if (transition) {
+            return transition;
+        } else {
+            throw new Error('No transition defined');
+        }
     }
 }
 
