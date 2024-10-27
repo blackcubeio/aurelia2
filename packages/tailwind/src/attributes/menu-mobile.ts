@@ -12,6 +12,8 @@ import {ITransitionService, ITransition} from '@blackcube/aurelia2-transition';
 export class MenuMobile implements ICustomAttributeViewModel
 {
     private openButton: HTMLButtonElement;
+    // element searched using [data-menu-mobile="close"]
+    // default transition for the menu, can be overriden by data-transition-* attributes
     private closeButtonTransition: ITransition = {
         from: 'opacity-0',
         to: 'opacity-100',
@@ -21,6 +23,8 @@ export class MenuMobile implements ICustomAttributeViewModel
     };
     private closeButton: HTMLButtonElement;
     private closeButtonPanel: HTMLDivElement;
+    // element searched using [data-menu-mobile="overlay"]
+    // default transition for the menu, can be overriden by data-transition-* attributes
     private overlayTransition: ITransition = {
         from: 'opacity-0',
         to: 'opacity-100',
@@ -29,6 +33,8 @@ export class MenuMobile implements ICustomAttributeViewModel
         hide: 'none'
     };
     private overlayPanel: HTMLDivElement;
+    // element searched using [data-menu-mobile="offcanvas"]
+    // default transition for the menu, can be overriden by data-transition-* attributes
     private offcanvasTransition: ITransition = {
         from: '-translate-x-full',
         to: 'translate-x-0',
@@ -55,7 +61,9 @@ export class MenuMobile implements ICustomAttributeViewModel
         this.closeButtonPanel = this.closeButton.parentElement as HTMLDivElement;
         this.overlayPanel = this.element.querySelector('[data-menu-mobile="overlay"]') as HTMLDivElement;
         this.offcanvasPanel = this.element.querySelector('[data-menu-mobile="offcanvas"]') as HTMLDivElement;
-
+        if (!this.openButton || !this.closeButton || !this.closeButtonPanel || !this.overlayPanel || !this.offcanvasPanel) {
+            throw new Error('Missing required elements');
+        }
         const promises = [];
         promises.push(this.transitionService.leave(this.closeButtonPanel, this.closeButtonTransition, undefined, true));
         promises.push(this.transitionService.leave(this.overlayPanel, this.overlayTransition, undefined, true));

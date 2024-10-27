@@ -11,9 +11,10 @@ import {AriaService, IAriaService, IAriaTrapFocus} from '@blackcube/aurelia2-ari
 export class DropdownMenu implements ICustomAttributeViewModel
 {
     private button: HTMLButtonElement;
-    private menu: HTMLDivElement;
+    private menu: HTMLElement;
     private isClosed = true;
     private disposable: IDisposable;
+    // default transition for the menu, can be overriden by data-transition-* attributes
     private menuTransition: ITransition = {
         from: 'transform opacity-0 scale-95',
         to: 'transform opacity-100 scale-100',
@@ -37,8 +38,11 @@ export class DropdownMenu implements ICustomAttributeViewModel
     public attaching()
     {
         this.logger.trace('Attaching');
-        this.button = this.element.querySelector('button') as HTMLButtonElement;
-        this.menu = this.element.querySelector('div') as HTMLDivElement;
+        this.button = this.element.querySelector('[data-dropdown-menu="button"]') as HTMLButtonElement;
+        this.menu = this.element.querySelector('[data-dropdown-menu="menu"]') as HTMLElement;
+        if (!this.button || !this.menu) {
+            throw new Error('Missing required elements');
+        }
         this.transitionService.leave(this.menu, this.menuTransition, undefined, true)
             .then(() => {
                 this.isClosed = true;
@@ -58,7 +62,11 @@ export class DropdownMenu implements ICustomAttributeViewModel
     {
         this.logger.trace('Detaching');
         this.button.removeEventListener('click', this.onToggle);
-        this.disposable.dispose();
+    }
+
+    public dispose() {
+        this.logger.trace('Dispose');
+        this.disposable?.dispose();
     }
 
     private onTrapFocus = (evt: IAriaTrapFocus) =>

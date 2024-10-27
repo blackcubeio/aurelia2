@@ -14,7 +14,9 @@ import {IAriaService} from '@blackcube/aurelia2-aria';
 export class MenuSidebar implements ICustomAttributeViewModel
 {
     private buttons: NodeListOf<HTMLButtonElement>;
-    private svgTransition: ITransition = {
+    // element searched using [data-menu-sidebar="arrow"]
+    // default transition for the menu, can be overriden by data-transition-* attributes
+    private arrowTransition: ITransition = {
         from: 'text-gray-400',
         to: 'text-gray-500 rotate-90',
         transition: 'transition-transform ease-in-out duration-150',
@@ -32,7 +34,10 @@ export class MenuSidebar implements ICustomAttributeViewModel
     public attaching()
     {
         this.logger.trace('Attaching');
-        this.buttons = this.element.querySelectorAll('button[type="button"]');
+        this.buttons = this.element.querySelectorAll('[data-menu-sidebar]');
+        if (this.buttons.length === 0) {
+            throw new Error('No buttons found');
+        }
         this.initSidebar();
     }
 
@@ -53,16 +58,16 @@ export class MenuSidebar implements ICustomAttributeViewModel
         this.buttons.forEach((button) => {
             const menuName = button.dataset.menuSidebar as string;
             if (menuName.length > 0) {
-                const svg = button.querySelector('svg[data-menu-sidebar="arrow"]') as SVGElement;
+                const arrow = button.querySelector('[data-menu-sidebar-arrow]') as SVGElement;
                 const submenu = button.nextElementSibling as HTMLElement;
                 const state = this.sidebarService.getStatus(menuName);
                 if (state) {
-                    this.transitionService.enter(svg, this.svgTransition, true);
+                    this.transitionService.enter(arrow, this.arrowTransition, undefined, true);
                     this.ariaService.setExpanded(button, 'true');
                     this.ariaService.setHidden(submenu, 'false');
                     submenu.classList.remove('hidden');
                 } else {
-                    this.transitionService.leave(svg, this.svgTransition, undefined, true);
+                    this.transitionService.leave(arrow, this.arrowTransition, undefined, true);
                     this.ariaService.setExpanded(button, 'false');
                     this.ariaService.setHidden(submenu, 'true');
                     submenu.classList.add('hidden');
@@ -75,10 +80,10 @@ export class MenuSidebar implements ICustomAttributeViewModel
         evt.stopPropagation();
         const button = evt.target as HTMLButtonElement;
         const menuName = button.dataset.menuSidebar as string;
-        const svg = button.querySelector('svg[data-menu-sidebar="arrow"]') as SVGElement;
+        const arrow = button.querySelector('[data-menu-sidebar-arrow]') as SVGElement;
         const submenu = button.nextElementSibling as HTMLElement;
         if (submenu.classList.contains('hidden')) {
-            this.transitionService.enter(svg, this.svgTransition);
+            this.transitionService.enter(arrow, this.arrowTransition);
             submenu.classList.remove('hidden');
             this.ariaService.setExpanded(button, 'true');
             this.ariaService.setHidden(submenu, 'false');
@@ -87,7 +92,7 @@ export class MenuSidebar implements ICustomAttributeViewModel
                 this.sidebarService.setStatus(menuName, true);
             }
         } else {
-            this.transitionService.leave(svg, this.svgTransition);
+            this.transitionService.leave(arrow, this.arrowTransition);
             submenu.classList.add('hidden');
             this.ariaService.setExpanded(button, 'false');
             this.ariaService.setHidden(submenu, 'true');
