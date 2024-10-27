@@ -1,0 +1,1 @@
+{"version":3,"file":"transition-enums.d.ts","sourceRoot":"","sources":["../../../src/enums/transition-enums.ts"],"names":[],"mappings":"AAAA,oBAAY,kBAAkB;IAC1B,IAAI,oBAAoB;IACxB,KAAK,qBAAqB;IAC1B,QAAQ,wBAAwB;CACnC;AAED,oBAAY,eAAe;IACvB,KAAK,UAAU;IACf,KAAK,UAAU;CAClB;AAED,oBAAY,gBAAgB;IACxB,QAAQ,IAAI;IACZ,OAAO,IAAI;IACX,OAAO,IAAI;IACX,IAAI,IAAI;CACX"}

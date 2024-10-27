@@ -56,10 +56,10 @@ You can configure the toolkit by passing a configuration object to the configure
 
 ```typescript
 import Aurelia, { ConsoleSink, LoggerConfiguration, LogLevel} from 'aurelia';
-import { PowshieldConfiguration } from "@blackcube/aurelia2-powshield";
+import { WebauthnConfiguration } from "@blackcube/aurelia2-webauthn";
 import { MyApp } from './my-app';
 Aurelia
-    .register(PowshieldConfiguration.configure({
+    .register(WebauthnConfiguration.configure({
         prepareAttachDeviceUrl: '/webauthn/prepare-attach-device',
         prepareRegisterDeviceUrl: '/webauthn/prepare-register-device',
         validateRegisterUrl: '/webauthn/validate-register',

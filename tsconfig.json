@@ -17,6 +17,9 @@
     ],
     "declarationDir": "./dist/types",
   },
+  "files": [
+    "resource.d.ts"
+  ],
   "exclude": [
     "node_modules",
     "vendor"

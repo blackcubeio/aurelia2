@@ -1,6 +1,6 @@
 // Final Rollup configuration example
 import conf from '../../rollup.config.js';
-import pkg from './package.json' assert { type: "json" };
+import pkg from './package.json' with { type: "json" };
 
 export default {
     ...conf,
@@ -17,5 +17,5 @@ export default {
             format: 'es'
         }
     ],
-    external: ['aurelia', '@aurelia/fetch-client', '@aurelia/router']
+    external: ['aurelia', '@aurelia/fetch-client', '@aurelia/router', '@aurelia/validation']
 };
