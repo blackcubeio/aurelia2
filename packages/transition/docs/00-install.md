@@ -28,7 +28,7 @@ Aurelia
 You can configure the toolkit by passing a configuration object to the configure method:
 
 
-## Usage `bc-transition`
+## Usage attribute `bc-transition`
 
 `bc-transition` is used to run a css transition on an element.
 
@@ -72,7 +72,7 @@ Run enter (from -> to) transition with an event:
 
 ```
 
-Run enter (from -> to) transition with a service:
+Run enter (from -> to) transition with an element:
 
 ```typescript
     import { ITransitionService, ITransition, ITransitionRun, TransitionChannels, TransitionModes } from '@blackcube/aurelia2-transition';
@@ -98,7 +98,7 @@ Run leave (to -> from) transition with an event backward:
 
 ```
 
-Run leave (to -> from) transition with a service:
+Run leave (to -> from) transition with an element backward:
 
 ```typescript
     import { ITransitionService, ITransition, ITransitionRun, TransitionChannels, TransitionModes } from '@blackcube/aurelia2-transition';
